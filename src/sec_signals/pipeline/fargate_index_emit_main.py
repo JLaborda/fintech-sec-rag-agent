@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 from typing import Any, Protocol
 
+from sec_signals.aws.runtime import build_runtime
 from sec_signals.pipeline.emit import emit_for_filing
 from sec_signals.pipeline.index import index_accession
 from sec_signals.pipeline.reindex import rebuild_accession
@@ -80,11 +82,20 @@ def main(argv: list[str] | None = None) -> int:
         choices=["index_emit", "index_only", "rebuild", "emit_only"],
     )
     args = parser.parse_args(argv)
-    # Runtime wiring (boto3/AOSS/Bedrock) is provided by container entry env in deploy.
-    print(
-        f"fargate worker stub ready mode={args.mode} "
-        f"s3://{args.bucket}/raw/edgar/{args.cik}/{args.accession}"
+
+    runtime = build_runtime()
+    bucket = args.bucket or runtime.bucket
+    result = run_index_emit(
+        s3_client=runtime.s3_client,
+        bucket=bucket,
+        cik=args.cik,
+        accession_number=args.accession,
+        indexer=runtime.indexer,
+        retriever=runtime.retriever,
+        extractor=runtime.extractor,
+        mode=args.mode,
     )
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 

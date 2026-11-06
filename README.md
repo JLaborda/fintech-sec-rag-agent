@@ -30,6 +30,8 @@ pip install -e '.[dev]'
 pytest tests/contract tests/unit -q
 ```
 
+Live AWS wiring (CLI `ingest`/`emit`, Fargate worker, Terraform ECR/ECS/SFN/API) is implemented with mocked unit tests. End-to-end against a real account is documented in [`docs/phase1-e2e-aws.md`](docs/phase1-e2e-aws.md) and remains blocked without credentials + Bedrock model access.
+
 ## Scope
 
 Hermetic qualitative signals only. **Out of scope:** ranking, paper broker, 10-Q/8-K/news, chat-first UX. Research / decision-support — not investment advice.
