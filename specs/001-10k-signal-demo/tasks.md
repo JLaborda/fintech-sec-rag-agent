@@ -75,21 +75,21 @@ description: "Task list for phase-1 SEC 10-K qualitative signal generator"
 
 > Write these tests FIRST; ensure they FAIL before implementation
 
-- [ ] T013 [P] [US1] Contract tests for hermetic schema + five FactorIds + polarity/conviction ranges in `tests/contract/test_signal_emission_schema.py` using fixtures under `fixtures/filings/` and `specs/001-10k-signal-demo/contracts/signal-emission.schema.json`
-- [ ] T014 [P] [US1] Contract tests for `insufficient_evidence` (no polarity) and uncited-ok drop behavior in `tests/contract/test_provenance_validator.py`
-- [ ] T015 [P] [US1] Unit tests for factor prompt packing / JSON parse edge cases in `tests/unit/test_extract_parse.py`
-- [ ] T057 [P] [US1] Contract tests for warehouse row shape + Hive partitions (`ticker`, `filing_date`) per `specs/001-10k-signal-demo/contracts/signal-warehouse.md` in `tests/contract/test_signal_warehouse.py`
+- [X] T013 [P] [US1] Contract tests for hermetic schema + five FactorIds + polarity/conviction ranges in `tests/contract/test_signal_emission_schema.py` using fixtures under `fixtures/filings/` and `specs/001-10k-signal-demo/contracts/signal-emission.schema.json`
+- [X] T014 [P] [US1] Contract tests for `insufficient_evidence` (no polarity) and uncited-ok drop behavior in `tests/contract/test_provenance_validator.py`
+- [X] T015 [P] [US1] Unit tests for factor prompt packing / JSON parse edge cases in `tests/unit/test_extract_parse.py`
+- [X] T057 [P] [US1] Contract tests for warehouse row shape + Hive partitions (`ticker`, `filing_date`) per `specs/001-10k-signal-demo/contracts/signal-warehouse.md` in `tests/contract/test_signal_warehouse.py`
 
 ### Implementation for User Story 1
 
-- [ ] T016 [P] [US1] Add sample emission fixtures (valid ok, insufficient_evidence, uncited-ok-to-drop) under `fixtures/emissions/` and minimal 10-K text snippets under `fixtures/filings/`
-- [ ] T017 [US1] Implement OpenSearch Serverless retrieve (k-NN + metadata filters on `ticker`, `accession_number`, **`filing_date`**) in `src/sec_signals/retrieve/opensearch_client.py` (RAG only)
-- [ ] T018 [US1] Implement per-factor top-k retrieval orchestration in `src/sec_signals/retrieve/retriever.py` (semantic query + filters; return Chunks with section/item/quote-capable text)
-- [ ] T019 [US1] Implement Haiku 4.5 factor extraction prompts + Converse call producing draft factors/key_events in `src/sec_signals/extract/factor_extractor.py` (modelId MUST be `eu.anthropic.claude-haiku-4-5-20251001-v1:0`; no Sonnet)
-- [ ] T020 [US1] Implement emit pipeline `retrieve → extract → validate → warehouse persist` in `src/sec_signals/pipeline/emit.py` writing curated Parquet via `src/sec_signals/warehouse/parquet_writer.py` per `contracts/signal-warehouse.md`; optional debug JSON via `src/sec_signals/lake/signals.py` under `s3://…/signals/…` (**not** the durable store)
-- [ ] T054 [US1] Implement Parquet warehouse writer (Hive partitions `factor_schema_version`/`ticker`/`filing_date`, five `SignalFactorRow`s) in `src/sec_signals/warehouse/parquet_writer.py`
-- [ ] T021 [US1] Implement batch emit for ticker list in `src/sec_signals/pipeline/batch_emit.py` (per-ticker errors without inventing scores for other tickers; default latest filing by `filing_date`; shared by secondary CLI/API and backfill)
-- [ ] T022 [US1] Wire library-level emit / batch_emit callables used by Fargate primary path and secondary CLI/API in `src/sec_signals/pipeline/__init__.py`
+- [X] T016 [P] [US1] Add sample emission fixtures (valid ok, insufficient_evidence, uncited-ok-to-drop) under `fixtures/emissions/` and minimal 10-K text snippets under `fixtures/filings/`
+- [X] T017 [US1] Implement OpenSearch Serverless retrieve (k-NN + metadata filters on `ticker`, `accession_number`, **`filing_date`**) in `src/sec_signals/retrieve/opensearch_client.py` (RAG only)
+- [X] T018 [US1] Implement per-factor top-k retrieval orchestration in `src/sec_signals/retrieve/retriever.py` (semantic query + filters; return Chunks with section/item/quote-capable text)
+- [X] T019 [US1] Implement Haiku 4.5 factor extraction prompts + Converse call producing draft factors/key_events in `src/sec_signals/extract/factor_extractor.py` (modelId MUST be `eu.anthropic.claude-haiku-4-5-20251001-v1:0`; no Sonnet)
+- [X] T020 [US1] Implement emit pipeline `retrieve → extract → validate → warehouse persist` in `src/sec_signals/pipeline/emit.py` writing curated Parquet via `src/sec_signals/warehouse/parquet_writer.py` per `contracts/signal-warehouse.md`; optional debug JSON via `src/sec_signals/lake/signals.py` under `s3://…/signals/…` (**not** the durable store)
+- [X] T054 [US1] Implement Parquet warehouse writer (Hive partitions `factor_schema_version`/`ticker`/`filing_date`, five `SignalFactorRow`s) in `src/sec_signals/warehouse/parquet_writer.py`
+- [X] T021 [US1] Implement batch emit for ticker list in `src/sec_signals/pipeline/batch_emit.py` (per-ticker errors without inventing scores for other tickers; default latest filing by `filing_date`; shared by secondary CLI/API and backfill)
+- [X] T022 [US1] Wire library-level emit / batch_emit callables used by Fargate primary path and secondary CLI/API in `src/sec_signals/pipeline/__init__.py`
 
 **Checkpoint**: US1 independently testable with fixtures + mocked/local AOSS; hermetic JSON + curated Parquet rows validate
 
