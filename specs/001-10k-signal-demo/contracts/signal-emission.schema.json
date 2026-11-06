@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fintech-sec-rag-agent.local/contracts/signal-emission.schema.json",
+  "title": "SECQualitativeSignalEmission",
+  "description": "Hermetic Phase-1 qualitative signal emission (factor schema 0.1.0). Research/decision-support only — not investment advice.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "factor_schema_version",
+    "model_or_pipeline_version",
+    "ticker",
+    "cik",
+    "accession_number",
+    "form",
+    "filing_date",
+    "factors",
+    "disclaimer",
+    "emitted_at"
+  ],
+  "properties": {
+    "factor_schema_version": {
+      "const": "0.1.0"
+    },
+    "model_or_pipeline_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ticker": {
+      "type": "string",
+      "enum": ["V", "MA", "PYPL", "XYZ", "COIN"]
+    },
+    "cik": {
+      "type": "string",
+      "pattern": "^[0-9]+$"
+    },
+    "accession_number": {
+      "type": "string",
+      "minLength": 1
+    },
+    "form": {
+      "type": "string",
+      "enum": ["10-K", "10-K/A"]
+    },
+    "filing_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Published filing date (YYYY-MM-DD); also required on vector chunk metadata"
+    },
+    "factors": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/factorSignal"
+      }
+    },
+    "key_events": {
+      "type": "array",
+      "description": "Optional cited factual highlights — not a sixth polarity factor",
+      "items": {
+        "$ref": "#/$defs/keyEvent"
+      }
+    },
+    "disclaimer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Research / decision-support framing; must not claim investment advice"
+    },
+    "emitted_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section", "item", "quote"],
+      "properties": {
+        "section": { "type": "string", "minLength": 1 },
+        "item": { "type": "string", "minLength": 1 },
+        "quote": { "type": "string", "minLength": 1 },
+        "char_start": { "type": ["integer", "null"], "minimum": 0 },
+        "char_end": { "type": ["integer", "null"], "minimum": 0 },
+        "chunk_id": { "type": ["string", "null"] }
+      }
+    },
+    "factorOk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "factor_id",
+        "status",
+        "polarity",
+        "conviction",
+        "citation",
+        "reasoning"
+      ],
+      "properties": {
+        "factor_id": {
+          "type": "string",
+          "enum": [
+            "regulatory_and_legal_risk",
+            "competitive_position",
+            "management_tone",
+            "demand_and_growth_outlook",
+            "operational_and_supply_risk"
+          ]
+        },
+        "status": { "const": "ok" },
+        "polarity": { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+        "conviction": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "citation": { "$ref": "#/$defs/citation" },
+        "reasoning": {
+          "type": "string",
+          "minLength": 1,
+          "description": "About 2–4 sentences for this factor only"
+        }
+      }
+    },
+    "factorInsufficient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factor_id", "status", "reasoning"],
+      "properties": {
+        "factor_id": {
+          "type": "string",
+          "enum": [
+            "regulatory_and_legal_risk",
+            "competitive_position",
+            "management_tone",
+            "demand_and_growth_outlook",
+            "operational_and_supply_risk"
+          ]
+        },
+        "status": { "const": "insufficient_evidence" },
+        "reasoning": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must state what was searched and why evidence was insufficient"
+        }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["polarity"] },
+          { "required": ["conviction"] },
+          { "required": ["citation"] }
+        ]
+      }
+    },
+    "factorSignal": {
+      "oneOf": [
+        { "$ref": "#/$defs/factorOk" },
+        { "$ref": "#/$defs/factorInsufficient" }
+      ]
+    },
+    "keyEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "citation"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "citation": { "$ref": "#/$defs/citation" }
+      }
+    }
+  }
+}
