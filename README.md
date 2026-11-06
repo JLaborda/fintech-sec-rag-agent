@@ -1,54 +1,39 @@
 # fintech-sec-rag-agent
 
-RAG agent over **SEC EDGAR** filings for a small set of fintech tickers.
+AWS-native Phase-1 **SEC 10-K / 10-K/A** qualitative signal generator for demo tickers **V, MA, PYPL, XYZ, COIN**.
 
-## What
+## Locked stack
 
-This project aims to answer analyst-style questions over **10-K**, **10-Q**, and **8-K** filings by retrieving relevant sections and returning **structured risk signals with citations**.
+| Concern | Choice |
+|---------|--------|
+| Region | `eu-west-1` |
+| LLM | Bedrock Converse Claude Haiku 4.5 — `eu.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| Embeddings | Titan Text Embeddings V2 — `amazon.titan-embed-text-v2:0` (1024-d) |
+| Vector (RAG only) | OpenSearch Serverless |
+| Durable signals | S3 curated Parquet + Glue + Athena |
+| Primary path | S3 raw landing → Step Functions / Fargate (index + emit + warehouse) |
+| Secondary | CLI / API Gateway Lambda re-emit / debug / backfill |
+| IaC | Terraform under `infra/` |
 
-Intended shape (proposal only):
+## Spec Kit
 
-- Ingest filings for a limited ticker universe
-- Parse and chunk filing sections with metadata
-- Retrieve with embeddings + vector search
-- Produce structured JSON signals that keep only cited claims
+Feature artifacts: [`specs/001-10k-signal-demo/`](specs/001-10k-signal-demo/) (`plan.md`, `tasks.md`, contracts).
 
-## Why
+Developer notes: [`docs/phase1-dev.md`](docs/phase1-dev.md) · Quickstart: [`specs/001-10k-signal-demo/quickstart.md`](specs/001-10k-signal-demo/quickstart.md)
 
-Portfolio **MLOps / fintech** project owned by **Jorge D. Laborda Sicilia**.
+## Local tests
 
-The goal is a small, end-to-end system that demonstrates retrieval quality, structured outputs, evaluation, and observability—not a production trading product.
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+pytest tests/contract tests/unit -q
+```
 
-## High-level architecture
+## Scope
 
-The diagram below is an **initial Archify sketch / proposal**, not a final design. Component boundaries, providers, and storage choices are still open.
-
-![Initial architecture sketch (proposal) — fintech-sec-rag-agent](docs/images/fintech-sec-rag-agent-sketch.png)
-
-*Caption: Initial sketch / proposal only. Ingestion, query/agent path, and evaluation/observability are outlined; vector DB, LLM, and embedding providers remain TBD.*
-
-## Status
-
-Early scaffolding only:
-
-- Repository bootstrap in progress
-- [GitHub Spec Kit](https://github.com/github/spec-kit) installed (Cursor Agent integration, `sh` scripts)
-- Project **constitution** not written yet (intentionally omitted)
-- First feature **spec** not written yet
-
-Next expected steps: draft a constitution, then author the first feature specification under Spec Kit.
-
-## Stack (TBD)
-
-Concrete product choices are **not** locked yet. Still to decide:
-
-- Vector database
-- LLM provider
-- Embedding model / provider
-- Local development vs AWS (or other) deployment
-
-Do not treat any library names elsewhere in this repo as committed architecture until they appear in an approved Spec Kit plan.
+Hermetic qualitative signals only. **Out of scope:** ranking, paper broker, 10-Q/8-K/news, chat-first UX. Research / decision-support — not investment advice.
 
 ## License / secrets
 
-This repository should not contain metrics dashboards, AWS account IDs, API keys, or other secrets. Use local `.env` files (gitignored) for credentials during development.
+Do not commit AWS account IDs, API keys, or EDGAR credentials. Use local `.env` (gitignored).

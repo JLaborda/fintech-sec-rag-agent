@@ -129,16 +129,16 @@ description: "Task list for phase-1 SEC 10-K qualitative signal generator"
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Contract/API shape tests aligned to `specs/001-10k-signal-demo/contracts/batch-emit.openapi.yaml` (secondary re-emit) in `tests/contract/test_batch_emit_api.py`
-- [ ] T033 [P] [US3] CLI emit/validate golden-path tests in `tests/integration/test_cli_emit.py` asserting warehouse persist default and secondary/backfill framing in help text
+- [X] T032 [P] [US3] Contract/API shape tests aligned to `specs/001-10k-signal-demo/contracts/batch-emit.openapi.yaml` (secondary re-emit) in `tests/contract/test_batch_emit_api.py`
+- [X] T033 [P] [US3] CLI emit/validate golden-path tests in `tests/integration/test_cli_emit.py` asserting warehouse persist default and secondary/backfill framing in help text
 
 ### Implementation for User Story 3
 
-- [ ] T034 [P] [US3] Implement Typer CLI `emit`, `validate` per `specs/001-10k-signal-demo/contracts/cli-batch-emit.md` in `src/sec_signals/cli/main.py` and `src/sec_signals/cli/emit_cmd.py` (exit codes 0/2/3/4; emit documented as re-emit/backfill)
-- [ ] T035 [P] [US3] Implement CLI `ingest` and `index [--rebuild]` commands in `src/sec_signals/cli/ingest_cmd.py` and `src/sec_signals/cli/index_cmd.py` (`ingest` lands raw objects that trigger primary path; `index` is ops rebuild helper)
-- [ ] T036 [US3] **DEMOTED (reprocess only)**: Implement Lambda HTTP handlers for `POST /v1/signals:batchEmit` and `GET /v1/health` in `src/sec_signals/api/handlers.py` matching OpenAPI — **secondary re-emit/backfill**, not primary production emit; include optional `warehouse_uri` in results
-- [ ] T037 [US3] Add API auth hook (API key and/or IAM SigV4 configurable) in `src/sec_signals/api/auth.py` — internal demo, not public anonymous
-- [ ] T038 [US3] Ensure CLI and API both set `disclaimer` research-not-advice framing and share `pipeline.batch_emit` + warehouse writer with Fargate primary path (no divergent schemas)
+- [X] T034 [P] [US3] Implement Typer CLI `emit`, `validate` per `specs/001-10k-signal-demo/contracts/cli-batch-emit.md` in `src/sec_signals/cli/main.py` and `src/sec_signals/cli/emit_cmd.py` (exit codes 0/2/3/4; emit documented as re-emit/backfill)
+- [X] T035 [P] [US3] Implement CLI `ingest` and `index [--rebuild]` commands in `src/sec_signals/cli/ingest_cmd.py` and `src/sec_signals/cli/index_cmd.py` (`ingest` lands raw objects that trigger primary path; `index` is ops rebuild helper)
+- [X] T036 [US3] **DEMOTED (reprocess only)**: Implement Lambda HTTP handlers for `POST /v1/signals:batchEmit` and `GET /v1/health` in `src/sec_signals/api/handlers.py` matching OpenAPI — **secondary re-emit/backfill**, not primary production emit; include optional `warehouse_uri` in results
+- [X] T037 [US3] Add API auth hook (API key and/or IAM SigV4 configurable) in `src/sec_signals/api/auth.py` — internal demo, not public anonymous
+- [X] T038 [US3] Ensure CLI and API both set `disclaimer` research-not-advice framing and share `pipeline.batch_emit` + warehouse writer with Fargate primary path (no divergent schemas)
 
 **OBSOLETE (do not implement)**: Treating API Gateway + Lambda batch emit as the sole/primary production signal path (superseded by S3→Fargate on-ingest). Prior wording of T036 as primary emit is void.
 
@@ -154,19 +154,19 @@ description: "Task list for phase-1 SEC 10-K qualitative signal generator"
 
 ### Tests for User Story 4
 
-- [ ] T039 [P] [US4] Add LLM-as-judge golden cases + rubric fixtures in `tests/golden/` and `fixtures/golden/` using Haiku 4.5 judge profile `eu.anthropic.claude-haiku-4-5-20251001-v1:0`
-- [ ] T040 [P] [US4] Implement judge runner marked `@pytest.mark.llm_judge` in `tests/golden/test_llm_judge.py` (not required on every production emit, including on-ingest)
+- [X] T039 [P] [US4] Add LLM-as-judge golden cases + rubric fixtures in `tests/golden/` and `fixtures/golden/` using Haiku 4.5 judge profile `eu.anthropic.claude-haiku-4-5-20251001-v1:0`
+- [X] T040 [P] [US4] Implement judge runner marked `@pytest.mark.llm_judge` in `tests/golden/test_llm_judge.py` (not required on every production emit, including on-ingest)
 
 ### Implementation for User Story 4
 
-- [ ] T041 [P] [US4] Terraform module for immutable S3 raw lake + curated signals prefix in `infra/modules/lake/`
-- [ ] T056 [P] [US4] Terraform for Glue database/table `curated_signals` (partitions `factor_schema_version`,`ticker`,`filing_date`) + Athena workgroup in `infra/modules/lake/` (or `infra/modules/warehouse/`) per `contracts/signal-warehouse.md`
-- [ ] T042 [P] [US4] Terraform module for OpenSearch Serverless vector collection (1024-d, metadata mappings including `filing_date`) in `infra/modules/vector/` — RAG only
-- [ ] T043 [P] [US4] **DEMOTED compute surface**: Terraform for secondary Lambda re-emit API, API Gateway HTTP API, IAM, CloudWatch in `infra/modules/compute/` (not primary emit)
-- [ ] T044 [US4] Terraform for ECR + Fargate task def + Step Functions **primary** ingest/index/emit/warehouse orchestration + S3 event notifications on raw prefix in `infra/modules/compute/` (wire with T043 secondary API)
-- [ ] T045 [US4] Demo root module `infra/envs/demo/` for `eu-west-1` with outputs (bucket, curated prefix, Glue/Athena, AOSS endpoint, state machine ARN, secondary API URL, pipeline version) documented in `specs/001-10k-signal-demo/quickstart.md`
-- [ ] T046 [US4] CI workflow `.github/workflows/ci.yml`: always run `pytest tests/contract tests/unit`; run `tests/golden -m llm_judge` only when paths under `src/sec_signals/{retrieve,extract,validate,warehouse,pipeline}/`, prompts, or factor schema/contracts change
-- [ ] T047 [US4] Add path-filter / change-detection notes and env secrets documentation (Bedrock, EDGAR UA) in `docs/phase1-ci.md`
+- [X] T041 [P] [US4] Terraform module for immutable S3 raw lake + curated signals prefix in `infra/modules/lake/`
+- [X] T056 [P] [US4] Terraform for Glue database/table `curated_signals` (partitions `factor_schema_version`,`ticker`,`filing_date`) + Athena workgroup in `infra/modules/lake/` (or `infra/modules/warehouse/`) per `contracts/signal-warehouse.md`
+- [X] T042 [P] [US4] Terraform module for OpenSearch Serverless vector collection (1024-d, metadata mappings including `filing_date`) in `infra/modules/vector/` — RAG only
+- [X] T043 [P] [US4] **DEMOTED compute surface**: Terraform for secondary Lambda re-emit API, API Gateway HTTP API, IAM, CloudWatch in `infra/modules/compute/` (not primary emit)
+- [X] T044 [US4] Terraform for ECR + Fargate task def + Step Functions **primary** ingest/index/emit/warehouse orchestration + S3 event notifications on raw prefix in `infra/modules/compute/` (wire with T043 secondary API)
+- [X] T045 [US4] Demo root module `infra/envs/demo/` for `eu-west-1` with outputs (bucket, curated prefix, Glue/Athena, AOSS endpoint, state machine ARN, secondary API URL, pipeline version) documented in `specs/001-10k-signal-demo/quickstart.md`
+- [X] T046 [US4] CI workflow `.github/workflows/ci.yml`: always run `pytest tests/contract tests/unit`; run `tests/golden -m llm_judge` only when paths under `src/sec_signals/{retrieve,extract,validate,warehouse,pipeline}/`, prompts, or factor schema/contracts change
+- [X] T047 [US4] Add path-filter / change-detection notes and env secrets documentation (Bedrock, EDGAR UA) in `docs/phase1-ci.md`
 
 **Checkpoint**: Happy-path deploy + quality gates satisfy US4; constitution eval gates met; warehouse is durable signal store
 
@@ -176,11 +176,11 @@ description: "Task list for phase-1 SEC 10-K qualitative signal generator"
 
 **Purpose**: Hardening and validation across stories
 
-- [ ] T048 [P] Align package version / `model_or_pipeline_version` stamping in `src/sec_signals/version.py`
-- [ ] T049 [P] Add unit tests for validator edge cases (out-of-range polarity, 10-K/A form, missing filing_date) in `tests/unit/test_validator_edges.py`
-- [ ] T050 Explicitly assert non-goals: no ranking/paper-broker/10-Q/8-K/news/chat modules under `src/sec_signals/`; assert durable signals are not AOSS-only; add guard test in `tests/unit/test_scope_guards.py`
-- [ ] T051 Run end-to-end validation steps from `specs/001-10k-signal-demo/quickstart.md` (on-ingest primary + secondary re-emit) and fix gaps
-- [ ] T052 [P] Update root `README.md` status to point at Spec Kit plan/tasks and Haiku 4.5 / Titan V2 / AOSS (RAG) / Parquet+Glue+Athena choices (remove stale “stack TBD” / primary-HTTP-emit wording where contradicted)
+- [X] T048 [P] Align package version / `model_or_pipeline_version` stamping in `src/sec_signals/version.py`
+- [X] T049 [P] Add unit tests for validator edge cases (out-of-range polarity, 10-K/A form, missing filing_date) in `tests/unit/test_validator_edges.py`
+- [X] T050 Explicitly assert non-goals: no ranking/paper-broker/10-Q/8-K/news/chat modules under `src/sec_signals/`; assert durable signals are not AOSS-only; add guard test in `tests/unit/test_scope_guards.py`
+- [X] T051 Run end-to-end validation steps from `specs/001-10k-signal-demo/quickstart.md` (on-ingest primary + secondary re-emit) and fix gaps
+- [X] T052 [P] Update root `README.md` status to point at Spec Kit plan/tasks and Haiku 4.5 / Titan V2 / AOSS (RAG) / Parquet+Glue+Athena choices (remove stale “stack TBD” / primary-HTTP-emit wording where contradicted)
 
 ---
 
