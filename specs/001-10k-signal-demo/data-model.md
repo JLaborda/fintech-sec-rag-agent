@@ -2,7 +2,7 @@
 
 **Feature**: `001-10k-signal-demo` | **Schema version**: `0.1.0` | **Date**: 2026-11-06
 
-Aligned to locked contract v0.1 and constitution provenance rules. Implementation models SHOULD map 1:1 to these entities and to `contracts/signal-emission.schema.json`.
+Aligned to locked contract v0.1 and constitution provenance rules. Implementation models SHOULD map 1:1 to these entities and to `contracts/signal-emission.schema.json`. Durable analytics persistence follows `contracts/signal-warehouse.md`.
 
 ## Enumerations
 
@@ -45,8 +45,9 @@ Canonical EDGAR submission retained immutably in the raw lake.
 **Rules**:
 - Latest filing for emit = max(`filing_date`) among `10-K`/`10-K/A` for ticker (tie-break: newest accession).
 - Raw objects are never overwritten; new ingest creates new keys or fails if identical content already present.
+- **Creating a new raw filing object MUST trigger the primary index → emit → warehouse pipeline.**
 
-**Relationships**: 1 Filing → many Chunks; 0..1 SignalEmission per (Filing, `model_or_pipeline_version`) for default emit.
+**Relationships**: 1 Filing → many Chunks; 0..1 SignalEmission per (Filing, `model_or_pipeline_version`) for default emit; many SignalFactorRow warehouse rows per emission.
 
 ---
 
@@ -72,6 +73,7 @@ Section-aware excerpt used for retrieval and citation.
 **Rules**:
 - Vector index is derived; deleting AOSS documents and re-embedding from S3 MUST restore equivalent retrieval metadata.
 - Retrieval filters MUST be able to constrain on `filing_date`, `ticker`, `accession_number`.
+- AOSS holds chunks for RAG only — never treat AOSS documents as the durable signal table.
 
 **Relationships**: Chunk → Filing (N:1).
 
@@ -137,7 +139,7 @@ Cited factual highlight at filing level — **not** a sixth polarity factor.
 
 ### SignalEmission
 
-Hermetic JSON document returned by CLI/API and stored in the lake.
+Hermetic JSON document produced by the primary on-ingest pipeline (and by secondary CLI/API re-emit). Logical contract object before warehouse flattening.
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
@@ -153,7 +155,7 @@ Hermetic JSON document returned by CLI/API and stored in the lake.
 | `disclaimer` | string | yes | Research-not-advice framing |
 | `emitted_at` | datetime | yes | |
 
-**Validation rules** (enforced before emit):
+**Validation rules** (enforced before emit / warehouse write):
 1. Exactly five factors; set of `factor_id` == closed catalog.
 2. No ad-hoc factor ids.
 3. Every `ok` factor has in-range polarity/conviction + citation quote.
@@ -161,7 +163,57 @@ Hermetic JSON document returned by CLI/API and stored in the lake.
 5. Filing-level provenance complete including `filing_date`.
 6. Uncited or provenance-incomplete scored claims are **dropped** (converted to `insufficient_evidence` or rejected per validator policy — Phase-1 policy: **drop scored claim → emit `insufficient_evidence` with reasoning noting validation drop**).
 
-**Relationships**: SignalEmission → Filing (N:1); SignalEmission contains FactorSignals (1:5).
+**Relationships**: SignalEmission → Filing (N:1); SignalEmission contains FactorSignals (1:5); SignalEmission → SignalFactorRow (1:5).
+
+---
+
+### SignalFactorRow (warehouse / curated table)
+
+Tabular durable form of one factor on one emission. **Authoritative analytics store** (Glue/Athena over Parquet). One emission yields exactly five rows.
+
+| Column | Type | Required | Notes |
+|--------|------|----------|-------|
+| `factor_schema_version` | string | yes | Partition / column; const `0.1.0` |
+| `ticker` | DemoTicker | yes | **Partition key** |
+| `filing_date` | date | yes | **Partition key** (`YYYY-MM-DD`) |
+| `cik` | string | yes | |
+| `accession_number` | string | yes | |
+| `form` | FormType | yes | |
+| `model_or_pipeline_version` | string | yes | |
+| `emitted_at` | datetime | yes | |
+| `factor_id` | FactorId | yes | |
+| `status` | FactorStatus | yes | |
+| `polarity` | float \| null | conditional | Required when `ok`; null when `insufficient_evidence` |
+| `conviction` | float \| null | no | |
+| `citation_section` | string \| null | conditional | Required when `ok` |
+| `citation_item` | string \| null | conditional | Required when `ok` |
+| `citation_quote` | string \| null | conditional | Required when `ok` |
+| `citation_char_start` | int \| null | no | |
+| `citation_char_end` | int \| null | no | |
+| `citation_chunk_id` | string \| null | no | |
+| `reasoning` | string | yes | |
+| `disclaimer` | string | yes | Copied from emission |
+| `key_events_json` | string \| null | no | Optional JSON-serialized `key_events` on each of the five rows (same payload) |
+
+**Storage layout**:
+```text
+s3://{bucket}/curated/signals/
+  factor_schema_version=0.1.0/
+    ticker={TICKER}/
+      filing_date={YYYY-MM-DD}/
+        part-{accession}-{pipeline_version}.parquet
+```
+
+**Glue / Athena**:
+- Database: `sec_signals` (Terraform-configurable name)
+- Table: `curated_signals`
+- Partition projection or MSCK/Glue crawler over `ticker`, `filing_date` (and schema version prefix)
+- Natural grain: `(ticker, accession_number, factor_schema_version, model_or_pipeline_version, factor_id)`
+
+**Rules**:
+- Warehouse write happens **after** successful validation on the primary on-ingest path (and on secondary re-emit).
+- Re-emit with the same natural key **overwrites** the Parquet object for that accession/pipeline version (or writes a new pipeline_version object — prefer new `model_or_pipeline_version` for auditability).
+- OpenSearch MUST NOT be queried as the durable signal store.
 
 ---
 
@@ -180,12 +232,16 @@ Hermetic JSON document returned by CLI/API and stored in the lake.
 ## State transitions
 
 ```text
-[EDGAR] --ingest--> Filing(raw in S3)
+[EDGAR] --fetch--> Filing(raw in S3)
+Filing raw object-created --S3 event--> Step Functions / Fargate
 Filing --parse/chunk--> Chunk[]
-Chunk[] --embed/index--> AOSS documents (derived)
-Filing + AOSS --retrieve+extract--> draft SignalEmission
-draft --validate--> SignalEmission (emitted) | per-factor insufficient_evidence substitutions
-SignalEmission --persist--> S3 signals/ + API/CLI response
+Chunk[] --embed/index--> AOSS documents (derived RAG only)
+Filing + AOSS --retrieve+Haiku extract--> draft SignalEmission
+draft --validate--> SignalEmission
+SignalEmission --flatten--> SignalFactorRow[5]
+SignalFactorRow[] --persist--> S3 curated Parquet + Glue/Athena  (DURABLE)
+SignalEmission --optional debug--> S3 signals/*.json
+Secondary CLI/API re-emit --same library--> validate → warehouse write (backfill/debug only)
 ```
 
 No portfolio/ranking states in Phase 1.
@@ -197,3 +253,4 @@ No portfolio/ranking states in Phase 1.
 | Filing | `(cik, accession_number)` |
 | Chunk | `(accession_number, chunk_id)` |
 | SignalEmission | `(ticker, accession_number, factor_schema_version, model_or_pipeline_version)` |
+| SignalFactorRow | `(ticker, accession_number, factor_schema_version, model_or_pipeline_version, factor_id)` |
