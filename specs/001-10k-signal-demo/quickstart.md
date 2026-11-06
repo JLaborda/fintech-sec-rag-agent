@@ -9,7 +9,7 @@ This guide validates the planned happy path end-to-end. It is a **run/validation
 - AWS account with permissions for S3, OpenSearch Serverless, Bedrock (Converse + Titan embed), Lambda, API Gateway, Step Functions, ECS/Fargate, ECR, IAM, CloudWatch
 - Bedrock model access enabled in `eu-west-1` for:
   - Embeddings: `amazon.titan-embed-text-v2:0`
-  - Generation (via EU geo profile): `eu.anthropic.claude-sonnet-4-5-20250929-v1:0`
+  - Generation (via EU geo profile): `eu.anthropic.claude-haiku-4-5-20251001-v1:0`
 - Terraform >= 1.5, Python 3.12, Docker (for Fargate image build)
 - SEC EDGAR-compliant User-Agent identity configured (env / SSM — not committed)
 

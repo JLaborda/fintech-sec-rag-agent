@@ -8,7 +8,7 @@
 
 ## Summary
 
-Deliver an AWS-native horizontal slice that ingests the latest SEC **10-K / 10-K/A** for tickers **V, MA, PYPL, XYZ, COIN** into an immutable **S3** lake, section-aware chunks with **`filing_date`** metadata into **OpenSearch Serverless**, embeds with **Titan Text Embeddings V2**, extracts hermetic qualitative signals via **Bedrock Converse (Claude Sonnet 4.5, EU geo profile)** under locked contract schema **`0.1.0`**, validates/drops uncited scores, and exposes **CLI + HTTP batch emit**. Terraform happy path in **`eu-west-1`**. Contract tests always; LLM-as-judge golden set in CI when RAG surfaces change. Research-not-advice. No ranking, paper broker, or non-10-K sources.
+Deliver an AWS-native horizontal slice that ingests the latest SEC **10-K / 10-K/A** for tickers **V, MA, PYPL, XYZ, COIN** into an immutable **S3** lake, section-aware chunks with **`filing_date`** metadata into **OpenSearch Serverless**, embeds with **Titan Text Embeddings V2**, extracts hermetic qualitative signals via **Bedrock Converse (Claude Haiku 4.5, EU geo profile)** under locked contract schema **`0.1.0`**, validates/drops uncited scores, and exposes **CLI + HTTP batch emit**. Terraform happy path in **`eu-west-1`**. Contract tests always; LLM-as-judge golden set in CI when RAG surfaces change. Research-not-advice. No ranking, paper broker, or non-10-K sources.
 
 ## Technical Context
 

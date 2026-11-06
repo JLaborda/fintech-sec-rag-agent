@@ -11,7 +11,7 @@ All Technical Context unknowns resolved. No remaining `NEEDS CLARIFICATION`.
 **Rationale**:
 - Preferred by product brief when Bedrock models are available there.
 - Amazon Titan Text Embeddings V2 (`amazon.titan-embed-text-v2:0`) supports in-region inference in `eu-west-1`.
-- Claude Sonnet 4.5 is reachable from `eu-west-1` via the **EU geo inference profile** (routes within EU destination regions).
+- Claude Haiku 4.5 is reachable from `eu-west-1` via the **EU geo inference profile** (routes within EU destination regions).
 - Keeps raw S3 lake, OpenSearch Serverless, and Lambda/Fargate co-located for a simple Terraform happy path.
 
 **Alternatives considered**:
@@ -20,24 +20,28 @@ All Technical Context unknowns resolved. No remaining `NEEDS CLARIFICATION`.
 
 ## Decision 2: Generation LLM (Bedrock Converse)
 
-**Decision**: **Amazon Bedrock Converse** with **Claude Sonnet 4.5** via EU geo inference profile:
+**Decision**: **Amazon Bedrock Converse** with **Claude Haiku 4.5** via EU geo inference profile:
 
 | Field | Value |
 |-------|-------|
 | API | `bedrock-runtime` `Converse` |
-| Base model ID | `anthropic.claude-sonnet-4-5-20250929-v1:0` |
-| Runtime `modelId` (eu-west-1) | `eu.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+| Foundation model (reference) | `anthropic.claude-haiku-4-5-20251001-v1:0` |
+| Runtime `modelId` (eu-west-1) | `eu.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | Client region | `eu-west-1` |
 | Use | Factor extraction, optional `key_events`, LLM-as-judge in CI |
+| Approx. EU on-demand rates | **~$1.10 / 1M input tokens**, **~$5.50 / 1M output tokens** (≈ **$0.0011 / 1K in**, **$0.0055 / 1K out**) |
+
+> Note: On `bedrock-runtime`, Haiku 4.5 requires a geo/global inference profile ID (bare foundation model ID is not supported for on-demand). Phase-1 uses the EU geo profile from `eu-west-1`.
 
 **Rationale**:
-- Brief asked for “Claude Sonnet 4 (or current Sonnet available)”. **Claude Sonnet 4 (`anthropic.claude-sonnet-4-20250514-v1:0`) reached EOL on 2026-10-14** and now fails with `ResourceNotFoundException`.
-- Sonnet 4.5 is the current Sonnet-class model for this use case (Legacy stage; EOL 2027-04-08) with Converse support and structured-output capability suitable for hermetic JSON.
+- **Demo cost savings**: Haiku 4.5 is substantially cheaper than Sonnet-class models for repeated extract + CI judge runs on a five-ticker universe.
+- **Adequate for hermetic JSON signals**: structured Converse output + mandatory JSON Schema / provenance validator + contract fixtures + LLM-as-judge golden set on RAG changes keep quality gates intact even if raw generative strength is below Sonnet.
 - EU geo profile from `eu-west-1` keeps inference within EU geography while remaining AWS-native.
+- Active Bedrock model (launch 2025-10-16) with Converse and structured-output support.
 
 **Alternatives considered**:
-- Claude Sonnet 4: EOL — cannot use.
-- Claude Haiku 4.5: cheaper/faster; weaker for grounded multi-factor extraction with citations — reserve as optional cost-down later, not Phase-1 default.
+- Claude Sonnet 4: EOL (2026-10-14) — cannot use.
+- Claude Sonnet 4.5 (`eu.anthropic.claude-sonnet-4-5-20250929-v1:0`): stronger reasoning but higher demo cost; superseded as Phase-1 default in favor of Haiku 4.5 with schema validation + evals compensating for lighter model class.
 - Non-Bedrock LLMs: violates constitution AWS/Bedrock constraint.
 
 ## Decision 3: Embeddings
@@ -138,7 +142,7 @@ All Technical Context unknowns resolved. No remaining `NEEDS CLARIFICATION`.
 
 **Decision**:
 - **Always**: pytest contract tests + fixtures (schema, provenance, `insufficient_evidence`).
-- **When RAG surfaces change** (path filters on retrieval/prompts/schema/pipeline): LLM-as-judge golden set via Bedrock Converse (same Sonnet 4.5 profile or Haiku for cost — default Sonnet 4.5 for judge consistency in Phase 1).
+- **When RAG surfaces change** (path filters on retrieval/prompts/schema/pipeline): LLM-as-judge golden set via Bedrock Converse using the **same Haiku 4.5 EU geo profile** as extraction (cost-aligned; consistency with emit path).
 - Judge **not** on every production emit request.
 
 **Alternatives considered**: Judge on every request — constitution forbids for v1 cost/latency.
@@ -154,7 +158,8 @@ All Technical Context unknowns resolved. No remaining `NEEDS CLARIFICATION`.
 
 ## Sources (docs consulted)
 
-- AWS Bedrock model card: Claude Sonnet 4 (EOL 2026-10-14)
-- AWS Bedrock model card: Claude Sonnet 4.5 (`anthropic.claude-sonnet-4-5-20250929-v1:0`, EU geo `eu.anthropic.claude-sonnet-4-5-20250929-v1:0`)
-- AWS Bedrock model card: Titan Text Embeddings V2 (`amazon.titan-embed-text-v2:0`)
+- AWS Bedrock model card: Claude Haiku 4.5 (EU geo `eu.anthropic.claude-haiku-4-5-20251001-v1:0`)
+- AWS Bedrock model card: Claude Sonnet 4 (EOL 2026-10-14) — historical context only
+- AWS Bedrock model card: Claude Sonnet 4.5 — considered then rejected as Phase-1 default for cost
+- AWS Bedrock model card: Titan Text Embeddings V2 (`amazon.titan-embed-text-v2:0`) — unchanged
 - Project constitution v1.0.0; phase-1 signal contract v0.1; `specs/001-10k-signal-demo/spec.md`
