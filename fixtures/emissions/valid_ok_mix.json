@@ -1,0 +1,52 @@
+{
+  "factor_schema_version": "0.1.0",
+  "model_or_pipeline_version": "0.1.0",
+  "ticker": "V",
+  "cik": "0001403161",
+  "accession_number": "0001403161-25-000001",
+  "form": "10-K",
+  "filing_date": "2025-11-15",
+  "disclaimer": "Research / decision-support only — not investment advice.",
+  "emitted_at": "2025-11-16T12:00:00Z",
+  "factors": [
+    {
+      "factor_id": "regulatory_and_legal_risk",
+      "status": "ok",
+      "polarity": -0.2,
+      "conviction": 0.6,
+      "citation": {
+        "section": "Risk Factors",
+        "item": "Item 1A",
+        "quote": "We are subject to extensive government regulation."
+      },
+      "reasoning": "Explicit regulation disclosure supports mild negative polarity for regulatory risk."
+    },
+    {
+      "factor_id": "competitive_position",
+      "status": "ok",
+      "polarity": 0.3,
+      "conviction": 0.55,
+      "citation": {
+        "section": "Business",
+        "item": "Item 1",
+        "quote": "We compete based on the strength of our brand and network."
+      },
+      "reasoning": "Brand and network language supports modest positive competitive position."
+    },
+    {
+      "factor_id": "management_tone",
+      "status": "insufficient_evidence",
+      "reasoning": "Searched Item 7 MD&A; no clear tone evidence beyond boilerplate."
+    },
+    {
+      "factor_id": "demand_and_growth_outlook",
+      "status": "insufficient_evidence",
+      "reasoning": "Searched Item 7; growth outlook statements were too generic."
+    },
+    {
+      "factor_id": "operational_and_supply_risk",
+      "status": "insufficient_evidence",
+      "reasoning": "Searched Item 1A; no operational or supply risk specifics retrieved."
+    }
+  ]
+}

@@ -1,0 +1,185 @@
+openapi: 3.1.0
+info:
+  title: SEC 10-K Qualitative Signal Batch Re-Emit API
+  version: 0.1.0
+  description: |
+    Phase-1 **secondary** batch re-emit / debug / backfill of hermetic qualitative
+    signals for the demo universe (V, MA, PYPL, XYZ, COIN).
+
+    The **primary production path** is S3 raw filing object-created → Step Functions /
+    Fargate (index + Haiku extract + curated Parquet warehouse write). This HTTP API
+    does NOT replace that path; it reuses the same library and warehouse writer for
+    operator-driven reprocess.
+
+    Outputs are research / decision-support signals only — not investment advice.
+    Ranking, paper broker, chat UX, and non-10-K sources are out of scope.
+    Durable signals land in curated Parquet / Glue / Athena — not OpenSearch.
+  contact:
+    name: fintech-sec-rag-agent
+servers:
+  - url: https://{api_id}.execute-api.eu-west-1.amazonaws.com
+    description: Demo HTTP API (eu-west-1) — secondary re-emit only
+    variables:
+      api_id:
+        default: example
+paths:
+  /v1/signals:batchEmit:
+    post:
+      operationId: batchEmitSignals
+      summary: Re-emit / backfill hermetic signals for one or more demo tickers
+      description: |
+        For each requested ticker, re-run retrieve → Haiku extract → validate →
+        warehouse persist against the latest indexed 10-K or 10-K/A (or an optional
+        accession override). Per-ticker failures do not invent scores.
+        Primary on-ingest emit is triggered by S3 events, not this endpoint.
+      tags: [signals, reprocess]
+      security:
+        - ApiKeyAuth: []
+        - SigV4: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchEmitRequest'
+            examples:
+              demoUniverse:
+                value:
+                  tickers: [V, MA, PYPL, XYZ, COIN]
+                  include_key_events: true
+      responses:
+        '200':
+          description: Batch completed (may include per-ticker errors)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchEmitResponse'
+        '400':
+          description: Invalid request (unknown ticker, empty list, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Dependency unavailable (Bedrock, OpenSearch, S3, Glue)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/health:
+    get:
+      operationId: health
+      summary: Liveness
+      tags: [ops]
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+    SigV4:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: AWS SigV4 (IAM) when configured
+
+  schemas:
+    BatchEmitRequest:
+      type: object
+      additionalProperties: false
+      required: [tickers]
+      properties:
+        tickers:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/DemoTicker'
+        include_key_events:
+          type: boolean
+          default: true
+        accession_number:
+          type: string
+          description: Optional override; default is latest filing per ticker
+          nullable: true
+        persist_warehouse:
+          type: boolean
+          default: true
+          description: When true (default), write curated Parquet rows per signal-warehouse.md
+
+    DemoTicker:
+      type: string
+      enum: [V, MA, PYPL, XYZ, COIN]
+
+    BatchEmitResponse:
+      type: object
+      additionalProperties: false
+      required: [disclaimer, results]
+      properties:
+        disclaimer:
+          type: string
+          description: Research-not-advice framing for the batch
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TickerEmitResult'
+
+    TickerEmitResult:
+      type: object
+      additionalProperties: false
+      required: [ticker, status]
+      properties:
+        ticker:
+          $ref: '#/components/schemas/DemoTicker'
+        status:
+          type: string
+          enum: [emitted, error]
+        emission:
+          description: Present when status=emitted; MUST validate against signal-emission.schema.json
+          type: object
+          additionalProperties: true
+        warehouse_uri:
+          type: string
+          description: S3 URI of curated Parquet object when persisted
+          nullable: true
+        error:
+          type: object
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+          required: [code, message]
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

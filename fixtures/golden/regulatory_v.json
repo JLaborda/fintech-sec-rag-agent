@@ -1,0 +1,9 @@
+{
+  "case_id": "v-regulatory-01",
+  "ticker": "V",
+  "fixture_filing_ref": "fixtures/filings/sample_10k_snippet.txt",
+  "factor_id": "regulatory_and_legal_risk",
+  "expected_status": "ok",
+  "judge_rubric": "Grounded citation must quote regulation language from Item 1A; polarity must be in [-1,1].",
+  "rag_surface_tags": ["retrieve", "extract", "schema"]
+}

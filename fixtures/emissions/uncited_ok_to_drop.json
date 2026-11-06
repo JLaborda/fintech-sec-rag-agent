@@ -1,0 +1,45 @@
+{
+  "factor_schema_version": "0.1.0",
+  "model_or_pipeline_version": "0.1.0",
+  "ticker": "XYZ",
+  "cik": "0001512673",
+  "accession_number": "0001512673-25-000001",
+  "form": "10-K",
+  "filing_date": "2025-02-25",
+  "disclaimer": "Research / decision-support only — not investment advice.",
+  "emitted_at": "2025-02-26T12:00:00Z",
+  "factors": [
+    {
+      "factor_id": "regulatory_and_legal_risk",
+      "status": "ok",
+      "polarity": 0.1,
+      "conviction": 0.4,
+      "citation": {
+        "section": "Risk Factors",
+        "item": "Item 1A",
+        "quote": ""
+      },
+      "reasoning": "Model claimed regulation without a usable quote."
+    },
+    {
+      "factor_id": "competitive_position",
+      "status": "insufficient_evidence",
+      "reasoning": "No competitive evidence located."
+    },
+    {
+      "factor_id": "management_tone",
+      "status": "insufficient_evidence",
+      "reasoning": "No tone evidence located."
+    },
+    {
+      "factor_id": "demand_and_growth_outlook",
+      "status": "insufficient_evidence",
+      "reasoning": "No demand evidence located."
+    },
+    {
+      "factor_id": "operational_and_supply_risk",
+      "status": "insufficient_evidence",
+      "reasoning": "No operational evidence located."
+    }
+  ]
+}
