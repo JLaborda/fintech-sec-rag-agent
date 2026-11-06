@@ -38,10 +38,10 @@ description: "Task list for phase-1 SEC 10-K qualitative signal generator"
 
 **Purpose**: Project initialization and Python package skeleton
 
-- [ ] T001 Create repository layout `src/sec_signals/{models,edgar,lake,parse,retrieve,extract,validate,warehouse,pipeline,api,cli}/`, `tests/{contract,integration,unit,golden}/`, `fixtures/filings/`, and `infra/{modules/{lake,vector,compute,iam},envs/demo}/` per plan.md
-- [ ] T002 Initialize Python 3.12 package with `pyproject.toml` (package `sec_signals`, entrypoint `sec-signals`, deps: boto3, pydantic, jsonschema, httpx, typer, pyarrow, pandas, pytest)
-- [ ] T003 [P] Add ruff/black (or project-standard) lint/format config in `pyproject.toml` and `.gitignore` entries for `.venv/`, `.env`, Terraform state
-- [ ] T004 [P] Add `README` section or `docs/phase1-dev.md` pointing to `specs/001-10k-signal-demo/quickstart.md` and locked Haiku/Titan/AOSS/Parquet+Glue+Athena choices
+- [X] T001 Create repository layout `src/sec_signals/{models,edgar,lake,parse,retrieve,extract,validate,warehouse,pipeline,api,cli}/`, `tests/{contract,integration,unit,golden}/`, `fixtures/filings/`, and `infra/{modules/{lake,vector,compute,iam},envs/demo}/` per plan.md
+- [X] T002 Initialize Python 3.12 package with `pyproject.toml` (package `sec_signals`, entrypoint `sec-signals`, deps: boto3, pydantic, jsonschema, httpx, typer, pyarrow, pandas, pytest)
+- [X] T003 [P] Add ruff/black (or project-standard) lint/format config in `pyproject.toml` and `.gitignore` entries for `.venv/`, `.env`, Terraform state
+- [X] T004 [P] Add `README` section or `docs/phase1-dev.md` pointing to `specs/001-10k-signal-demo/quickstart.md` and locked Haiku/Titan/AOSS/Parquet+Glue+Athena choices
 
 ---
 
@@ -51,15 +51,15 @@ description: "Task list for phase-1 SEC 10-K qualitative signal generator"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Implement demo universe + enums in `src/sec_signals/models/enums.py` (`DemoTicker` = V|MA|PYPL|XYZ|COIN; `FormType` = 10-K|10-K/A; `FactorId` closed catalog of five; `FactorStatus` = ok|insufficient_evidence)
-- [ ] T006 [P] Implement Pydantic models for `Citation`, `FactorSignal` (ok vs insufficient_evidence), `KeyEvent`, `SignalEmission` in `src/sec_signals/models/emission.py` with constraints: `factor_schema_version` const `0.1.0`; `ok.polarity` ∈ [-1.0, 1.0]; `ok.conviction` ∈ [0.0, 1.0]; `insufficient_evidence` forbids `polarity`; exactly five factors
-- [ ] T007 [P] Implement `Filing` and `Chunk` models in `src/sec_signals/models/filing.py` requiring `filing_date` (ISO date) on both; Chunk requires `section`, `item`, `chunk_id`, ticker/cik/accession/form
-- [ ] T008 Implement schema/provenance validator in `src/sec_signals/validate/emission_validator.py` loading `specs/001-10k-signal-demo/contracts/signal-emission.schema.json`; drop uncited `ok` claims → substitute `insufficient_evidence` with drop reasoning; require research-not-advice `disclaimer`
-- [ ] T009 Implement environment config in `src/sec_signals/config.py` for `eu-west-1`, S3 raw + curated prefixes, Glue DB/table, Athena workgroup, AOSS endpoint/collection, Bedrock LLM id `eu.anthropic.claude-haiku-4-5-20251001-v1:0`, embed id `amazon.titan-embed-text-v2:0`, EDGAR User-Agent (from env/SSM — never commit secrets)
-- [ ] T010 [P] Implement Bedrock Converse client wrapper for Haiku 4.5 in `src/sec_signals/extract/bedrock_converse.py` (region `eu-west-1`, modelId `eu.anthropic.claude-haiku-4-5-20251001-v1:0`)
-- [ ] T011 [P] Implement Titan V2 embed client in `src/sec_signals/retrieve/titan_embed.py` (`amazon.titan-embed-text-v2:0`, dimensions=1024, normalize=true)
-- [ ] T012 [P] Implement structured logging helpers in `src/sec_signals/logging_utils.py` (no PII/secrets)
-- [ ] T053 [P] Implement `SignalFactorRow` model + emission→rows flatten helpers in `src/sec_signals/models/warehouse.py` matching `data-model.md` (five rows; `polarity` null when `insufficient_evidence`; partition fields `ticker`, `filing_date`)
+- [X] T005 Implement demo universe + enums in `src/sec_signals/models/enums.py` (`DemoTicker` = V|MA|PYPL|XYZ|COIN; `FormType` = 10-K|10-K/A; `FactorId` closed catalog of five; `FactorStatus` = ok|insufficient_evidence)
+- [X] T006 [P] Implement Pydantic models for `Citation`, `FactorSignal` (ok vs insufficient_evidence), `KeyEvent`, `SignalEmission` in `src/sec_signals/models/emission.py` with constraints: `factor_schema_version` const `0.1.0`; `ok.polarity` ∈ [-1.0, 1.0]; `ok.conviction` ∈ [0.0, 1.0]; `insufficient_evidence` forbids `polarity`; exactly five factors
+- [X] T007 [P] Implement `Filing` and `Chunk` models in `src/sec_signals/models/filing.py` requiring `filing_date` (ISO date) on both; Chunk requires `section`, `item`, `chunk_id`, ticker/cik/accession/form
+- [X] T008 Implement schema/provenance validator in `src/sec_signals/validate/emission_validator.py` loading `specs/001-10k-signal-demo/contracts/signal-emission.schema.json`; drop uncited `ok` claims → substitute `insufficient_evidence` with drop reasoning; require research-not-advice `disclaimer`
+- [X] T009 Implement environment config in `src/sec_signals/config.py` for `eu-west-1`, S3 raw + curated prefixes, Glue DB/table, Athena workgroup, AOSS endpoint/collection, Bedrock LLM id `eu.anthropic.claude-haiku-4-5-20251001-v1:0`, embed id `amazon.titan-embed-text-v2:0`, EDGAR User-Agent (from env/SSM — never commit secrets)
+- [X] T010 [P] Implement Bedrock Converse client wrapper for Haiku 4.5 in `src/sec_signals/extract/bedrock_converse.py` (region `eu-west-1`, modelId `eu.anthropic.claude-haiku-4-5-20251001-v1:0`)
+- [X] T011 [P] Implement Titan V2 embed client in `src/sec_signals/retrieve/titan_embed.py` (`amazon.titan-embed-text-v2:0`, dimensions=1024, normalize=true)
+- [X] T012 [P] Implement structured logging helpers in `src/sec_signals/logging_utils.py` (no PII/secrets)
+- [X] T053 [P] Implement `SignalFactorRow` model + emission→rows flatten helpers in `src/sec_signals/models/warehouse.py` matching `data-model.md` (five rows; `polarity` null when `insufficient_evidence`; partition fields `ticker`, `filing_date`)
 
 **Checkpoint**: Foundation ready — user story implementation can now begin
 
