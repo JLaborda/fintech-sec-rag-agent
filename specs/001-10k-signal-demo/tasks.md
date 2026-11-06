@@ -103,19 +103,19 @@ description: "Task list for phase-1 SEC 10-K qualitative signal generator"
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Unit tests for section/item chunking and required metadata in `tests/unit/test_parse_chunk.py`
-- [ ] T024 [P] [US2] Unit tests for latest 10-K vs 10-K/A selection by `filing_date` in `tests/unit/test_edgar_latest.py`
-- [ ] T025 [P] [US2] Integration test (stubbed EDGAR/S3/AOSS/warehouse) for ingest→index→emit→warehouse path in `tests/integration/test_ingest_index_emit.py` (rename/replace prior ingest-only focus of `test_ingest_index.py`)
+- [X] T023 [P] [US2] Unit tests for section/item chunking and required metadata in `tests/unit/test_parse_chunk.py`
+- [X] T024 [P] [US2] Unit tests for latest 10-K vs 10-K/A selection by `filing_date` in `tests/unit/test_edgar_latest.py`
+- [X] T025 [P] [US2] Integration test (stubbed EDGAR/S3/AOSS/warehouse) for ingest→index→emit→warehouse path in `tests/integration/test_ingest_index_emit.py` (rename/replace prior ingest-only focus of `test_ingest_index.py`)
 
 ### Implementation for User Story 2
 
-- [ ] T026 [P] [US2] Implement ticker→CIK map and EDGAR latest 10-K/10-K/A resolver (User-Agent compliant) in `src/sec_signals/edgar/client.py` and `src/sec_signals/edgar/universe.py`
-- [ ] T027 [US2] Implement immutable raw lake writer `s3://{bucket}/raw/edgar/{cik}/{accession_number}/…` + provenance sidecar (`ticker`,`cik`,`accession_number`,`form`,`filing_date`, source URLs) in `src/sec_signals/lake/raw.py` (never overwrite raw bytes)
-- [ ] T028 [US2] Implement section-aware HTML/text parse + chunker (~500–1000 tokens, overlap; offsets when available) in `src/sec_signals/parse/section_chunker.py`
-- [ ] T029 [US2] Implement index pipeline: chunk → Titan embed → AOSS upsert with filterable `filing_date` in `src/sec_signals/pipeline/index.py` and `src/sec_signals/retrieve/indexer.py`
-- [ ] T030 [US2] Implement rebuild-from-lake (delete derived vectors for accessions, re-embed from S3) in `src/sec_signals/pipeline/reindex.py`
-- [ ] T031 [US2] Implement Fargate task entrypoint for **primary** `parse/chunk/embed/index → emit → warehouse` in `src/sec_signals/pipeline/fargate_index_emit_main.py` (replace prior index-only `fargate_index_main.py` naming); modes: `index_emit` (default on S3 event), `index_only`/`rebuild` for ops
-- [ ] T055 [US2] Implement S3 object-created → Step Functions trigger wiring (raw prefix filter for 10-K/10-K/A) documented/coded for `infra` + handler stub in `src/sec_signals/pipeline/s3_event.py` so new raw filings start primary Fargate `index_emit`
+- [X] T026 [P] [US2] Implement ticker→CIK map and EDGAR latest 10-K/10-K/A resolver (User-Agent compliant) in `src/sec_signals/edgar/client.py` and `src/sec_signals/edgar/universe.py`
+- [X] T027 [US2] Implement immutable raw lake writer `s3://{bucket}/raw/edgar/{cik}/{accession_number}/…` + provenance sidecar (`ticker`,`cik`,`accession_number`,`form`,`filing_date`, source URLs) in `src/sec_signals/lake/raw.py` (never overwrite raw bytes)
+- [X] T028 [US2] Implement section-aware HTML/text parse + chunker (~500–1000 tokens, overlap; offsets when available) in `src/sec_signals/parse/section_chunker.py`
+- [X] T029 [US2] Implement index pipeline: chunk → Titan embed → AOSS upsert with filterable `filing_date` in `src/sec_signals/pipeline/index.py` and `src/sec_signals/retrieve/indexer.py`
+- [X] T030 [US2] Implement rebuild-from-lake (delete derived vectors for accessions, re-embed from S3) in `src/sec_signals/pipeline/reindex.py`
+- [X] T031 [US2] Implement Fargate task entrypoint for **primary** `parse/chunk/embed/index → emit → warehouse` in `src/sec_signals/pipeline/fargate_index_emit_main.py` (replace prior index-only `fargate_index_main.py` naming); modes: `index_emit` (default on S3 event), `index_only`/`rebuild` for ops
+- [X] T055 [US2] Implement S3 object-created → Step Functions trigger wiring (raw prefix filter for 10-K/10-K/A) documented/coded for `infra` + handler stub in `src/sec_signals/pipeline/s3_event.py` so new raw filings start primary Fargate `index_emit`
 
 **Checkpoint**: US2 independently testable — lake + AOSS RAG + on-ingest warehouse signals; primary path no longer depends on HTTP emit
 
