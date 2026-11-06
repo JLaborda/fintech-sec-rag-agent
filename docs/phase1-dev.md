@@ -22,3 +22,12 @@ source .venv/bin/activate
 pip install -e '.[dev]'
 pytest tests/contract tests/unit -q
 ```
+
+## Live AWS (optional)
+
+See [`phase1-e2e-aws.md`](phase1-e2e-aws.md). Required env for CLI / Fargate:
+
+- `SEC_SIGNALS_RAW_BUCKET`
+- `SEC_SIGNALS_AOSS_ENDPOINT`
+- `SEC_EDGAR_USER_AGENT` (ingest)
+- Bedrock access for Haiku 4.5 + Titan V2 in `eu-west-1`

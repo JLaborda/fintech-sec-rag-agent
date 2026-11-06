@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from sec_signals.api.auth import UnauthorizedError, authorize_request
+from sec_signals.aws.runtime import build_runtime
 from sec_signals.models.enums import DemoTicker
 from sec_signals.pipeline.batch_emit import FilingRef, batch_emit
+from sec_signals.pipeline.cli_emit import resolve_latest_from_lake
 from sec_signals.pipeline.emit import DISCLAIMER
 
 ResolveLatest = Callable[[DemoTicker], FilingRef]
@@ -61,28 +64,54 @@ def handle_batch_emit(
     return {"disclaimer": DISCLAIMER, "results": payload_results}, 200
 
 
+def _json_response(status: int, payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "statusCode": status,
+        "headers": {"content-type": "application/json"},
+        "body": json.dumps(payload),
+    }
+
+
 def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]:
     try:
         authorize_request(event)
     except UnauthorizedError as exc:
-        return {
-            "statusCode": 401,
-            "headers": {"content-type": "application/json"},
-            "body": json.dumps({"code": "unauthorized", "message": str(exc)}),
-        }
+        return _json_response(401, {"code": "unauthorized", "message": str(exc)})
 
     path = event.get("rawPath") or event.get("path") or ""
     method = (event.get("requestContext", {}).get("http", {}) or {}).get("method") or event.get(
         "httpMethod", "GET"
     )
     if path.endswith("/v1/health") and method == "GET":
-        return {
-            "statusCode": 200,
-            "headers": {"content-type": "application/json"},
-            "body": json.dumps(handle_health()),
-        }
-    return {
-        "statusCode": 404,
-        "headers": {"content-type": "application/json"},
-        "body": json.dumps({"code": "not_found", "message": f"no route for {method} {path}"}),
-    }
+        return _json_response(200, handle_health())
+
+    if path.endswith("/v1/signals:batchEmit") and method == "POST":
+        try:
+            body = json.loads(event.get("body") or "{}")
+        except json.JSONDecodeError:
+            return _json_response(400, {"code": "invalid_request", "message": "body must be JSON"})
+        try:
+            runtime = build_runtime()
+        except Exception as exc:  # noqa: BLE001 — surface wiring errors to caller
+            return _json_response(
+                503,
+                {
+                    "code": "runtime_unavailable",
+                    "message": f"live AWS wiring unavailable: {exc}",
+                },
+            )
+
+        def resolve(ticker: DemoTicker) -> FilingRef:
+            return resolve_latest_from_lake(runtime, ticker)
+
+        payload, status = handle_batch_emit(
+            body,
+            resolve_latest=resolve,
+            retriever=runtime.retriever,
+            extractor=runtime.extractor,
+            s3_client=runtime.s3_client,
+            bucket=runtime.bucket,
+        )
+        return _json_response(status, payload)
+
+    return _json_response(404, {"code": "not_found", "message": f"no route for {method} {path}"})
