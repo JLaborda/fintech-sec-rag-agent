@@ -72,17 +72,29 @@ def _json_response(status: int, payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]:
-    try:
-        authorize_request(event)
-    except UnauthorizedError as exc:
-        return _json_response(401, {"code": "unauthorized", "message": str(exc)})
-
-    path = event.get("rawPath") or event.get("path") or ""
-    method = (event.get("requestContext", {}).get("http", {}) or {}).get("method") or event.get(
+def _request_method(event: dict[str, Any]) -> str:
+    return (event.get("requestContext", {}).get("http", {}) or {}).get("method") or event.get(
         "httpMethod", "GET"
     )
-    if path.endswith("/v1/health") and method == "GET":
+
+
+def _request_path(event: dict[str, Any]) -> str:
+    return event.get("rawPath") or event.get("path") or ""
+
+
+def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]:
+    path = _request_path(event)
+    method = _request_method(event)
+    is_health = path.endswith("/v1/health") and method == "GET"
+
+    # Health stays intentionally public (liveness); batch emit requires API key (+ IAM at GW).
+    if not is_health:
+        try:
+            authorize_request(event)
+        except UnauthorizedError as exc:
+            return _json_response(401, {"code": "unauthorized", "message": str(exc)})
+
+    if is_health:
         return _json_response(200, handle_health())
 
     if path.endswith("/v1/signals:batchEmit") and method == "POST":

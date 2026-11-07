@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/archive"
       version = ">= 2.4"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.5"
+    }
   }
 }
 
@@ -30,6 +34,13 @@ variable "container_image" {
 variable "lambda_package_path" {
   type        = string
   description = "Absolute or repo-relative path to emit Lambda zip from scripts/package_emit_lambda.sh"
+  default     = ""
+}
+
+variable "demo_api_key" {
+  type        = string
+  description = "Optional override for batch-emit x-api-key; empty generates SSM SecureString"
+  sensitive   = true
   default     = ""
 }
 
@@ -74,6 +85,7 @@ module "compute" {
   aws_region           = var.aws_region
   container_image      = var.container_image
   lambda_package_path  = var.lambda_package_path
+  demo_api_key         = var.demo_api_key
   tags                 = local.tags
 }
 
@@ -107,6 +119,10 @@ output "ecr_repository_url" {
 
 output "emit_api_endpoint" {
   value = module.compute.emit_api_endpoint
+}
+
+output "demo_api_key_ssm_parameter" {
+  value = module.compute.demo_api_key_ssm_parameter
 }
 
 output "pipeline_version" {

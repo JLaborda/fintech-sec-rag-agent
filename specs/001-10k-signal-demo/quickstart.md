@@ -78,13 +78,16 @@ sec-signals emit --tickers V,MA,PYPL,XYZ,COIN --out /tmp/signals
 ## 5. Secondary re-emit (API — not primary)
 
 ```bash
-curl -s -X POST "$EMIT_API_URL/v1/signals:batchEmit" \
+# Route requires IAM SigV4 + x-api-key (from SSM param demo_api_key_ssm_parameter).
+# Example with awscurl (or AWS SDK signed request):
+awscurl --service execute-api --region "$AWS_REGION" \
+  -X POST "$EMIT_API_URL/v1/signals:batchEmit" \
   -H "content-type: application/json" \
   -H "x-api-key: $DEMO_API_KEY" \
   -d '{"tickers":["V","MA","PYPL","XYZ","COIN"]}'
 ```
 
-**Expected**: HTTP 200 with per-ticker `emitted` results matching CLI contract fields (see `contracts/batch-emit.openapi.yaml`). Does **not** replace the S3→Fargate primary path.
+**Expected**: HTTP 200 with per-ticker `emitted` results matching CLI contract fields (see `contracts/batch-emit.openapi.yaml`). Anonymous/`curl` without SigV4 is rejected at API Gateway. Does **not** replace the S3→Fargate primary path.
 
 ## 6. Contract tests (always)
 

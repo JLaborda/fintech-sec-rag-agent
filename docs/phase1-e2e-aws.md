@@ -11,7 +11,7 @@ Unit/contract tests mock AWS. The following needs a real `eu-west-1` account wit
 | Titan embeddings | Model access for `amazon.titan-embed-text-v2:0` |
 | `sec-signals ingest` | `SEC_EDGAR_USER_AGENT`, `SEC_SIGNALS_RAW_BUCKET`, network to `data.sec.gov` / `www.sec.gov` |
 | Primary path Fargate | Docker image pushed to ECR (`docker build` + `docker push` to `ecr_repository_url`) |
-| Secondary Lambda API | `scripts/package_emit_lambda.sh` → pass `-var=lambda_package_path=…/dist/emit_lambda.zip` |
+| Secondary Lambda API | `scripts/package_emit_lambda.sh` → pass `-var=lambda_package_path=…/dist/emit_lambda.zip`; callers need IAM `execute-api:Invoke` + `DEMO_API_KEY` from SSM output `demo_api_key_ssm_parameter` |
 | AOSS data plane | Terraform data-access policy principals (Fargate + Lambda roles) + `aoss:APIAccessAll` |
 | Athena verification | Glue table + workgroup from TF outputs |
 

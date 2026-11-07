@@ -24,6 +24,19 @@ def test_compute_has_api_gw_lambda_and_eventbridge_trigger() -> None:
     assert "raw/edgar/" in COMPUTE
 
 
+def test_batch_emit_route_requires_iam_and_demo_api_key_env() -> None:
+    """T037 / spec: emit API is not a public anonymous endpoint."""
+    assert 'authorization_type = "AWS_IAM"' in COMPUTE
+    assert "DEMO_API_KEY" in COMPUTE
+    assert "DEMO_REQUIRE_API_KEY" in COMPUTE
+    assert 'aws_ssm_parameter" "demo_api_key"' in COMPUTE
+    stub = (ROOT / "infra" / "modules" / "compute" / "lambda_stub_handler.py").read_text(
+        encoding="utf-8"
+    )
+    assert "503" in stub
+    assert '"statusCode": 200' not in stub or "/v1/health" in stub
+
+
 def test_vector_has_network_and_data_policies() -> None:
     assert 'type = "network"' in VECTOR
     assert "aws_opensearchserverless_access_policy" in VECTOR

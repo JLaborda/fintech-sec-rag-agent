@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from sec_signals.api.handlers import handle_batch_emit, handle_health
+import json
+
+import pytest
+
+from sec_signals.api.handlers import handle_batch_emit, handle_health, lambda_handler
 from sec_signals.models.enums import DemoTicker, FactorId, FormType
 from sec_signals.models.filing import Chunk
 from sec_signals.pipeline.batch_emit import FilingRef
@@ -105,3 +109,35 @@ def test_batch_emit_rejects_unknown_ticker() -> None:
     )
     assert status == 400
     assert response["code"] == "invalid_request"
+
+
+def test_lambda_handler_batch_emit_fails_closed_without_key_in_lambda(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DEMO_API_KEY", raising=False)
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "demo-emit")
+    result = lambda_handler(
+        {
+            "rawPath": "/v1/signals:batchEmit",
+            "requestContext": {"http": {"method": "POST"}},
+            "headers": {},
+            "body": '{"tickers":["V"]}',
+        }
+    )
+    assert result["statusCode"] == 401
+    body = json.loads(result["body"])
+    assert body["code"] == "unauthorized"
+
+
+def test_lambda_handler_health_remains_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DEMO_API_KEY", raising=False)
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "demo-emit")
+    result = lambda_handler(
+        {
+            "rawPath": "/v1/health",
+            "requestContext": {"http": {"method": "GET"}},
+            "headers": {},
+        }
+    )
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"])["status"] == "ok"

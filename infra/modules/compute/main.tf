@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/archive"
       version = ">= 2.4"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.5"
+    }
   }
 }
 
@@ -46,6 +50,13 @@ variable "container_image" {
 variable "lambda_package_path" {
   type        = string
   description = "Path to emit Lambda zip (built by scripts/package_emit_lambda.sh)."
+  default     = ""
+}
+
+variable "demo_api_key" {
+  type        = string
+  description = "x-api-key for secondary batch emit. Empty generates a SecureString in SSM."
+  sensitive   = true
   default     = ""
 }
 
@@ -448,6 +459,24 @@ resource "aws_cloudwatch_event_target" "raw_created_sfn" {
   }
 }
 
+resource "random_password" "demo_api_key" {
+  count   = var.demo_api_key == "" ? 1 : 0
+  length  = 32
+  special = false
+}
+
+locals {
+  demo_api_key = var.demo_api_key != "" ? var.demo_api_key : random_password.demo_api_key[0].result
+}
+
+resource "aws_ssm_parameter" "demo_api_key" {
+  name        = "/${var.name_prefix}/demo-api-key"
+  description = "API key for POST /v1/signals:batchEmit (x-api-key); not a public anonymous API"
+  type        = "SecureString"
+  value       = local.demo_api_key
+  tags        = var.tags
+}
+
 data "archive_file" "emit_lambda_stub" {
   type        = "zip"
   source_file = "${path.module}/lambda_stub_handler.py"
@@ -470,6 +499,8 @@ resource "aws_lambda_function" "emit" {
       SEC_SIGNALS_AOSS_COLLECTION = var.aoss_collection_name
       SEC_SIGNALS_LLM_MODEL_ID    = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
       SEC_SIGNALS_EMBED_MODEL_ID  = "amazon.titan-embed-text-v2:0"
+      DEMO_API_KEY                = local.demo_api_key
+      DEMO_REQUIRE_API_KEY        = "true"
     }
   }
   tags = var.tags
@@ -489,15 +520,18 @@ resource "aws_apigatewayv2_integration" "emit" {
 }
 
 resource "aws_apigatewayv2_route" "health" {
+  # Intentionally public liveness probe; no Bedrock/S3 side effects.
   api_id    = aws_apigatewayv2_api.emit.id
   route_key = "GET /v1/health"
   target    = "integrations/${aws_apigatewayv2_integration.emit.id}"
 }
 
 resource "aws_apigatewayv2_route" "batch_emit" {
-  api_id    = aws_apigatewayv2_api.emit.id
-  route_key = "POST /v1/signals:batchEmit"
-  target    = "integrations/${aws_apigatewayv2_integration.emit.id}"
+  # Internal demo: require SigV4 (IAM). App layer also enforces DEMO_API_KEY (fail-closed).
+  api_id             = aws_apigatewayv2_api.emit.id
+  route_key          = "POST /v1/signals:batchEmit"
+  target             = "integrations/${aws_apigatewayv2_integration.emit.id}"
+  authorization_type = "AWS_IAM"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -537,6 +571,11 @@ output "ecs_cluster_arn" {
 
 output "emit_api_endpoint" {
   value = aws_apigatewayv2_api.emit.api_endpoint
+}
+
+output "demo_api_key_ssm_parameter" {
+  value       = aws_ssm_parameter.demo_api_key.name
+  description = "SSM SecureString holding DEMO_API_KEY for batch emit callers"
 }
 
 output "task_definition_arn" {
