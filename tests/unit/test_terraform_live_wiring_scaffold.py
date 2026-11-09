@@ -14,6 +14,8 @@ def test_compute_has_ecr_ecs_fargate_and_sfn_run_task() -> None:
     assert "aws_ecs_cluster" in COMPUTE
     assert "aws_ecs_task_definition" in COMPUTE
     assert "ecs:runTask.sync" in COMPUTE
+    assert "RunIndexEmit" in COMPUTE
+    assert '"Retry"' in COMPUTE or "Retry =" in COMPUTE or "Retry" in COMPUTE
     assert 'Type   = "Pass"' not in COMPUTE or "IgnoredSidecar" in COMPUTE
 
 

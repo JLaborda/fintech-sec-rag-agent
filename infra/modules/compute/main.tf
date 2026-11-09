@@ -51,6 +51,11 @@ variable "lambda_package_path" {
   type        = string
   description = "Path to emit Lambda zip (built by scripts/package_emit_lambda.sh)."
   default     = ""
+
+  validation {
+    condition     = var.lambda_package_path == "" || fileexists(var.lambda_package_path)
+    error_message = "lambda_package_path is set but the zip file does not exist (refusing silent stub fallback)."
+  }
 }
 
 variable "demo_api_key" {
@@ -58,6 +63,24 @@ variable "demo_api_key" {
   description = "x-api-key for secondary batch emit. Empty generates a SecureString in SSM."
   sensitive   = true
   default     = ""
+}
+
+variable "llm_model_id" {
+  type        = string
+  description = "Bedrock model profile id for factor extraction (SEC_SIGNALS_LLM_MODEL_ID)."
+  default     = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+}
+
+variable "embed_model_id" {
+  type        = string
+  description = "Bedrock embedding model id (SEC_SIGNALS_EMBED_MODEL_ID)."
+  default     = "amazon.titan-embed-text-v2:0"
+}
+
+variable "vpc_subnet_ids" {
+  type        = list(string)
+  description = "Optional subnet IDs for Fargate tasks. Empty uses the account default VPC subnets."
+  default     = []
 }
 
 variable "tags" {
@@ -69,13 +92,15 @@ data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 data "aws_vpc" "default" {
+  count   = length(var.vpc_subnet_ids) == 0 ? 1 : 0
   default = true
 }
 
 data "aws_subnets" "default" {
+  count = length(var.vpc_subnet_ids) == 0 ? 1 : 0
   filter {
     name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
+    values = [data.aws_vpc.default[0].id]
   }
 }
 
@@ -249,9 +274,8 @@ resource "aws_ecs_cluster" "pipeline" {
 
 locals {
   image_uri = var.container_image != "" ? var.container_image : "${aws_ecr_repository.worker.repository_url}:latest"
-  lambda_zip_configured = (
-    var.lambda_package_path != "" ? fileexists(var.lambda_package_path) : false
-  )
+  lambda_zip_configured = var.lambda_package_path != ""
+  fargate_subnet_ids    = length(var.vpc_subnet_ids) > 0 ? var.vpc_subnet_ids : data.aws_subnets.default[0].ids
 }
 
 resource "aws_ecs_task_definition" "index_emit" {
@@ -280,8 +304,8 @@ resource "aws_ecs_task_definition" "index_emit" {
         { name = "SEC_SIGNALS_RAW_BUCKET", value = var.lake_bucket },
         { name = "SEC_SIGNALS_AOSS_ENDPOINT", value = var.aoss_endpoint },
         { name = "SEC_SIGNALS_AOSS_COLLECTION", value = var.aoss_collection_name },
-        { name = "SEC_SIGNALS_LLM_MODEL_ID", value = "eu.anthropic.claude-haiku-4-5-20251001-v1:0" },
-        { name = "SEC_SIGNALS_EMBED_MODEL_ID", value = "amazon.titan-embed-text-v2:0" },
+        { name = "SEC_SIGNALS_LLM_MODEL_ID", value = var.llm_model_id },
+        { name = "SEC_SIGNALS_EMBED_MODEL_ID", value = var.embed_model_id },
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -389,7 +413,7 @@ resource "aws_sfn_state_machine" "index_emit" {
           TaskDefinition = aws_ecs_task_definition.index_emit.arn
           NetworkConfiguration = {
             AwsvpcConfiguration = {
-              Subnets        = data.aws_subnets.default.ids
+              Subnets        = local.fargate_subnet_ids
               AssignPublicIp = "ENABLED"
             }
           }
@@ -402,6 +426,15 @@ resource "aws_sfn_state_machine" "index_emit" {
             ]
           }
         }
+        # Provenance race / transient ECS failures: retry with backoff before failing.
+        Retry = [
+          {
+            ErrorEquals     = ["States.ALL"]
+            IntervalSeconds = 15
+            MaxAttempts     = 4
+            BackoffRate     = 2
+          }
+        ]
         End = true
       }
     }
@@ -497,8 +530,8 @@ resource "aws_lambda_function" "emit" {
       SEC_SIGNALS_RAW_BUCKET      = var.lake_bucket
       SEC_SIGNALS_AOSS_ENDPOINT   = var.aoss_endpoint
       SEC_SIGNALS_AOSS_COLLECTION = var.aoss_collection_name
-      SEC_SIGNALS_LLM_MODEL_ID    = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
-      SEC_SIGNALS_EMBED_MODEL_ID  = "amazon.titan-embed-text-v2:0"
+      SEC_SIGNALS_LLM_MODEL_ID    = var.llm_model_id
+      SEC_SIGNALS_EMBED_MODEL_ID  = var.embed_model_id
       DEMO_API_KEY                = local.demo_api_key
       DEMO_REQUIRE_API_KEY        = "true"
     }

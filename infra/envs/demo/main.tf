@@ -44,6 +44,29 @@ variable "demo_api_key" {
   default     = ""
 }
 
+variable "llm_model_id" {
+  type        = string
+  description = "Bedrock model profile for Fargate + Lambda factor extraction"
+  default     = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+}
+
+variable "embed_model_id" {
+  type        = string
+  default     = "amazon.titan-embed-text-v2:0"
+}
+
+variable "vpc_subnet_ids" {
+  type        = list(string)
+  description = "Optional Fargate subnet IDs; empty uses default VPC"
+  default     = []
+}
+
+variable "operator_principal_arns" {
+  type        = list(string)
+  description = "Extra IAM principals for AOSS data access (CLI operators). Caller identity is always included."
+  default     = []
+}
+
 provider "aws" {
   region = var.aws_region
 }
@@ -57,8 +80,13 @@ locals {
     Phase   = "1"
   }
   # Construct role ARNs by convention to avoid compute ↔ vector cycles.
+  # Roles are created in module.compute; AOSS data policy only stores ARN strings.
   fargate_task_role_arn = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-fargate-task"
   emit_lambda_role_arn  = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-emit-lambda"
+  data_access_principal_arns = distinct(concat(
+    [local.fargate_task_role_arn, local.emit_lambda_role_arn, data.aws_caller_identity.current.arn],
+    var.operator_principal_arns,
+  ))
 }
 
 module "lake" {
@@ -71,7 +99,7 @@ module "vector" {
   source                     = "../../modules/vector"
   name_prefix                = var.name_prefix
   tags                       = local.tags
-  data_access_principal_arns = [local.fargate_task_role_arn, local.emit_lambda_role_arn]
+  data_access_principal_arns = local.data_access_principal_arns
   allow_public_network       = true
 }
 
@@ -86,6 +114,9 @@ module "compute" {
   container_image      = var.container_image
   lambda_package_path  = var.lambda_package_path
   demo_api_key         = var.demo_api_key
+  llm_model_id         = var.llm_model_id
+  embed_model_id       = var.embed_model_id
+  vpc_subnet_ids       = var.vpc_subnet_ids
   tags                 = local.tags
 }
 

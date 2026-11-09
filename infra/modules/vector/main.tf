@@ -74,6 +74,12 @@ resource "aws_opensearchserverless_security_policy" "network" {
 resource "aws_opensearchserverless_access_policy" "data" {
   name = "${var.name_prefix}-data"
   type = "data"
+  # Principals are often role ARNs constructed by convention in the env module so this
+  # policy can apply before compute roles exist (avoids compute↔vector depends_on cycle).
+  depends_on = [
+    aws_opensearchserverless_security_policy.encryption,
+    aws_opensearchserverless_security_policy.network,
+  ]
   policy = jsonencode([
     {
       Rules = [
