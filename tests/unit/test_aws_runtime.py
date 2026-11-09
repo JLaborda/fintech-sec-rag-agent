@@ -58,9 +58,10 @@ def test_build_runtime_wires_clients(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_bedrock_client(*, region_name: str) -> Any:
         return _FakeBedrock()
 
-    def fake_aoss(*, endpoint: str, region: str, index_name: str = "sec-10k-chunks") -> Any:
+    def fake_aoss(*, endpoint: str, region: str, index_name: str = "sec-10k-chunks", **kwargs: Any) -> Any:
         assert endpoint.startswith("https://")
         assert region == "eu-west-1"
+        assert kwargs.get("ensure_knn_index") is True
         return _FakeAoss()
 
     monkeypatch.setattr("sec_signals.aws.runtime.boto3.client", lambda service, **kw: {
@@ -76,3 +77,6 @@ def test_build_runtime_wires_clients(monkeypatch: pytest.MonkeyPatch) -> None:
     assert runtime.indexer is not None
     assert runtime.retriever is not None
     assert runtime.extractor is not None
+
+    overridden = build_runtime(settings, raw_bucket="override-lake")
+    assert overridden.bucket == "override-lake"

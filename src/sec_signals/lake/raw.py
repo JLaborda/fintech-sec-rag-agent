@@ -36,9 +36,9 @@ def write_raw_filing(
         existing = None
     if existing is not None and existing != raw_bytes:
         raise FileExistsError(f"raw object already exists with different bytes: s3://{bucket}/{doc_key}")
-    if existing is None:
-        s3_client.put_object(Bucket=bucket, Key=doc_key, Body=raw_bytes)
 
+    # Sidecar-first: SFN ignores provenance.json and runs on the primary document
+    # event, so provenance must exist before the primary Object Created fires.
     sidecar = {
         "ticker": ticker,
         "cik": cik,
@@ -54,6 +54,8 @@ def write_raw_filing(
         Key=meta_key,
         Body=json.dumps(sidecar, indent=2).encode("utf-8"),
     )
+    if existing is None:
+        s3_client.put_object(Bucket=bucket, Key=doc_key, Body=raw_bytes)
     return f"s3://{bucket}/{doc_key}"
 
 

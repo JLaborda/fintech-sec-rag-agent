@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import boto3
@@ -32,14 +32,22 @@ class RuntimeClients:
 
 
 def require_settings_for_live(settings: Settings) -> None:
+    """Raise when required live-path settings are missing."""
     if not settings.raw_bucket:
         raise ValueError("SEC_SIGNALS_RAW_BUCKET is required for live AWS paths")
     if not settings.aoss_endpoint:
         raise ValueError("SEC_SIGNALS_AOSS_ENDPOINT is required for live AWS paths")
 
 
-def build_runtime(settings: Settings | None = None) -> RuntimeClients:
+def build_runtime(
+    settings: Settings | None = None,
+    *,
+    raw_bucket: str | None = None,
+) -> RuntimeClients:
+    """Wire S3/Bedrock/AOSS clients; ensure knn index exists for VECTORSEARCH."""
     cfg = settings or get_settings()
+    if raw_bucket:
+        cfg = replace(cfg, raw_bucket=raw_bucket)
     require_settings_for_live(cfg)
 
     s3_client = boto3.client("s3", region_name=cfg.aws_region)
@@ -48,6 +56,8 @@ def build_runtime(settings: Settings | None = None) -> RuntimeClients:
         endpoint=cfg.aoss_endpoint,
         region=cfg.aws_region,
         index_name="sec-10k-chunks",
+        ensure_knn_index=True,
+        embed_dimensions=cfg.embed_dimensions,
     )
     embedder = TitanEmbedClient(
         region=cfg.aws_region,
