@@ -39,10 +39,17 @@ def register(app: typer.Typer) -> None:
 
         ticker_list = [t.strip() for t in tickers.split(",") if t.strip()]
         results = ingest_tickers(ticker_list, edgar=edgar, s3_client=s3, bucket=bucket)
+        any_error = False
         for item in results:
+            if item.get("status") == "error":
+                any_error = True
+                typer.echo(f"error {item['ticker']}: {item.get('error')}", err=True)
+                continue
             typer.echo(
                 f"ingested {item['ticker']} accession={item['accession_number']} uri={item['uri']}"
             )
         typer.echo(
             "raw object create should trigger primary S3→Step Functions→Fargate index+emit."
         )
+        if any_error:
+            raise typer.Exit(code=1)

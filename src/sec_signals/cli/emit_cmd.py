@@ -28,7 +28,6 @@ def register(app: typer.Typer) -> None:
         ),
     ) -> None:
         """Re-emit / backfill hermetic signals (secondary path; not primary on-ingest)."""
-        _ = include_key_events  # reserved; extractor always may return key_events
         try:
             runtime = build_runtime()
         except ValueError as exc:
@@ -45,18 +44,22 @@ def register(app: typer.Typer) -> None:
             persist_warehouse=persist_warehouse,
             accession=accession,
             write_debug=bool(out),
+            include_key_events=include_key_events,
         )
         if out:
             out.mkdir(parents=True, exist_ok=True)
         exit_error = False
         for item in results:
+            ticker_label = (
+                item.ticker.value if hasattr(item.ticker, "value") else str(item.ticker)
+            )
             if item.status == "emitted" and item.emission is not None:
                 typer.echo(
-                    f"emitted {item.ticker.value} accession={item.emission.accession_number}"
+                    f"emitted {ticker_label} accession={item.emission.accession_number}"
                     + (f" warehouse={item.warehouse_uri}" if item.warehouse_uri else "")
                 )
                 if out:
-                    path = out / f"{item.ticker.value}.json"
+                    path = out / f"{ticker_label}.json"
                     path.write_text(
                         json.dumps(item.emission.model_dump(mode="json"), indent=2),
                         encoding="utf-8",
@@ -64,7 +67,7 @@ def register(app: typer.Typer) -> None:
             else:
                 exit_error = True
                 typer.echo(
-                    f"error {item.ticker.value}: {item.error_message or item.error_code}",
+                    f"error {ticker_label}: {item.error_message or item.error_code}",
                     err=True,
                 )
         if exit_error:

@@ -141,3 +141,37 @@ def test_lambda_handler_health_remains_public(monkeypatch: pytest.MonkeyPatch) -
     )
     assert result["statusCode"] == 200
     assert json.loads(result["body"])["status"] == "ok"
+
+
+def test_lambda_handler_rejects_non_object_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_API_KEY", "secret")
+    monkeypatch.setenv("DEMO_REQUIRE_API_KEY", "true")
+    result = lambda_handler(
+        {
+            "rawPath": "/v1/signals:batchEmit",
+            "requestContext": {"http": {"method": "POST"}},
+            "headers": {"x-api-key": "secret"},
+            "body": '["V"]',
+        }
+    )
+    assert result["statusCode"] == 400
+    assert json.loads(result["body"])["code"] == "invalid_request"
+
+
+def test_handle_batch_emit_rejects_non_bool_persist_warehouse() -> None:
+    response, status = handle_batch_emit(
+        {"tickers": ["V"], "persist_warehouse": "yes"},
+        resolve_latest=lambda t: FilingRef(
+            ticker=t,
+            cik="0001403161",
+            accession_number="0001403161-25-000001",
+            form="10-K",
+            filing_date="2025-11-15",
+        ),
+        retriever=_FakeRetriever(),
+        extractor=_FakeExtractor(),
+        s3_client=_FakeS3(),
+        bucket="lake",
+    )
+    assert status == 400
+    assert response["code"] == "invalid_request"

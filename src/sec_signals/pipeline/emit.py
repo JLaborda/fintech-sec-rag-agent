@@ -31,8 +31,10 @@ def emit_for_filing(
     bucket: str | None = None,
     persist_warehouse: bool = True,
     write_debug: bool = False,
+    include_key_events: bool = True,
     pipeline_version: str = MODEL_OR_PIPELINE_VERSION,
 ) -> tuple[SignalEmission, str | None]:
+    """Retrieve, extract, validate, and optionally persist a hermetic emission."""
     chunks = retriever.retrieve_for_factors(
         ticker=ticker,
         accession_number=accession_number,
@@ -54,8 +56,8 @@ def emit_for_filing(
         "disclaimer": DISCLAIMER,
         "emitted_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
-    if payload["key_events"] is None:
-        payload.pop("key_events")
+    if not include_key_events or payload["key_events"] is None:
+        payload.pop("key_events", None)
     emission = validate_and_drop_uncited(payload)
 
     warehouse_uri: str | None = None

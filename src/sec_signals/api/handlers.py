@@ -39,7 +39,20 @@ def handle_batch_emit(
     if len(set(normalized)) != len(normalized):
         return {"code": "invalid_request", "message": "tickers must be unique"}, 400
 
-    persist_warehouse = bool(body.get("persist_warehouse", True))
+    if "persist_warehouse" in body and not isinstance(body.get("persist_warehouse"), bool):
+        return {
+            "code": "invalid_request",
+            "message": "persist_warehouse must be a boolean",
+        }, 400
+    persist_warehouse = body.get("persist_warehouse", True)
+    if not isinstance(persist_warehouse, bool):
+        persist_warehouse = True
+    include_key_events = body.get("include_key_events", True)
+    if not isinstance(include_key_events, bool):
+        return {
+            "code": "invalid_request",
+            "message": "include_key_events must be a boolean",
+        }, 400
     results = batch_emit(
         normalized,
         resolve_latest=resolve_latest,
@@ -48,10 +61,14 @@ def handle_batch_emit(
         s3_client=s3_client,
         bucket=bucket,
         persist_warehouse=persist_warehouse,
+        include_key_events=include_key_events,
     )
     payload_results = []
     for item in results:
-        entry: dict[str, Any] = {"ticker": item.ticker.value, "status": item.status}
+        ticker_label = (
+            item.ticker.value if hasattr(item.ticker, "value") else str(item.ticker)
+        )
+        entry: dict[str, Any] = {"ticker": ticker_label, "status": item.status}
         if item.status == "emitted" and item.emission is not None:
             entry["emission"] = item.emission.model_dump(mode="json")
             entry["warehouse_uri"] = item.warehouse_uri
@@ -102,6 +119,18 @@ def lambda_handler(event: dict[str, Any], context: Any = None) -> dict[str, Any]
             body = json.loads(event.get("body") or "{}")
         except json.JSONDecodeError:
             return _json_response(400, {"code": "invalid_request", "message": "body must be JSON"})
+        if not isinstance(body, dict):
+            return _json_response(
+                400, {"code": "invalid_request", "message": "body must be a JSON object"}
+            )
+        if "persist_warehouse" in body and not isinstance(body.get("persist_warehouse"), bool):
+            return _json_response(
+                400,
+                {
+                    "code": "invalid_request",
+                    "message": "persist_warehouse must be a boolean",
+                },
+            )
         try:
             runtime = build_runtime()
         except Exception as exc:  # noqa: BLE001 — surface wiring errors to caller
