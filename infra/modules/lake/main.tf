@@ -29,6 +29,12 @@ resource "aws_s3_bucket_versioning" "lake" {
   }
 }
 
+# Emit Object Created events to EventBridge for primary S3→SFN→Fargate path.
+resource "aws_s3_bucket_notification" "lake_eventbridge" {
+  bucket      = aws_s3_bucket.lake.id
+  eventbridge = true
+}
+
 resource "aws_glue_catalog_database" "sec_signals" {
   name = "sec_signals"
 }
@@ -130,6 +136,10 @@ resource "aws_athena_workgroup" "sec_signals" {
 
 output "bucket_name" {
   value = aws_s3_bucket.lake.bucket
+}
+
+output "bucket_arn" {
+  value = aws_s3_bucket.lake.arn
 }
 
 output "glue_database" {

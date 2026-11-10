@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from sec_signals.api.handlers import handle_batch_emit, handle_health
+import json
+
+import pytest
+
+from sec_signals.api.handlers import handle_batch_emit, handle_health, lambda_handler
 from sec_signals.models.enums import DemoTicker, FactorId, FormType
 from sec_signals.models.filing import Chunk
 from sec_signals.pipeline.batch_emit import FilingRef
@@ -98,6 +102,72 @@ def test_batch_emit_rejects_unknown_ticker() -> None:
     response, status = handle_batch_emit(
         {"tickers": ["AAPL"]},
         resolve_latest=lambda t: None,  # type: ignore[arg-type,return-value]
+        retriever=_FakeRetriever(),
+        extractor=_FakeExtractor(),
+        s3_client=_FakeS3(),
+        bucket="lake",
+    )
+    assert status == 400
+    assert response["code"] == "invalid_request"
+
+
+def test_lambda_handler_batch_emit_fails_closed_without_key_in_lambda(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DEMO_API_KEY", raising=False)
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "demo-emit")
+    result = lambda_handler(
+        {
+            "rawPath": "/v1/signals:batchEmit",
+            "requestContext": {"http": {"method": "POST"}},
+            "headers": {},
+            "body": '{"tickers":["V"]}',
+        }
+    )
+    assert result["statusCode"] == 401
+    body = json.loads(result["body"])
+    assert body["code"] == "unauthorized"
+
+
+def test_lambda_handler_health_remains_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DEMO_API_KEY", raising=False)
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "demo-emit")
+    result = lambda_handler(
+        {
+            "rawPath": "/v1/health",
+            "requestContext": {"http": {"method": "GET"}},
+            "headers": {},
+        }
+    )
+    assert result["statusCode"] == 200
+    assert json.loads(result["body"])["status"] == "ok"
+
+
+def test_lambda_handler_rejects_non_object_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_API_KEY", "secret")
+    monkeypatch.setenv("DEMO_REQUIRE_API_KEY", "true")
+    result = lambda_handler(
+        {
+            "rawPath": "/v1/signals:batchEmit",
+            "requestContext": {"http": {"method": "POST"}},
+            "headers": {"x-api-key": "secret"},
+            "body": '["V"]',
+        }
+    )
+    assert result["statusCode"] == 400
+    assert json.loads(result["body"])["code"] == "invalid_request"
+
+
+def test_handle_batch_emit_rejects_non_bool_persist_warehouse() -> None:
+    response, status = handle_batch_emit(
+        {"tickers": ["V"], "persist_warehouse": "yes"},
+        resolve_latest=lambda t: FilingRef(
+            ticker=t,
+            cik="0001403161",
+            accession_number="0001403161-25-000001",
+            form="10-K",
+            filing_date="2025-11-15",
+        ),
         retriever=_FakeRetriever(),
         extractor=_FakeExtractor(),
         s3_client=_FakeS3(),

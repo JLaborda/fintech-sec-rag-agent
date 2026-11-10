@@ -21,7 +21,7 @@ class FilingRef:
 
 @dataclass
 class TickerEmitResult:
-    ticker: DemoTicker
+    ticker: DemoTicker | str
     status: str
     emission: SignalEmission | None = None
     warehouse_uri: str | None = None
@@ -42,11 +42,15 @@ def batch_emit(
     bucket: str | None = None,
     persist_warehouse: bool = True,
     write_debug: bool = False,
+    include_key_events: bool = True,
 ) -> list[TickerEmitResult]:
+    """Emit signals per ticker with isolation; invalid tickers become error results."""
     results: list[TickerEmitResult] = []
     for raw in tickers:
-        ticker = raw if isinstance(raw, DemoTicker) else DemoTicker(raw)
+        label: DemoTicker | str = raw if isinstance(raw, DemoTicker) else str(raw)
         try:
+            ticker = raw if isinstance(raw, DemoTicker) else DemoTicker(str(raw).strip().upper())
+            label = ticker
             filing = resolve_latest(ticker)
             emission, warehouse_uri = emit_for_filing(
                 retriever=retriever,
@@ -60,6 +64,7 @@ def batch_emit(
                 bucket=bucket,
                 persist_warehouse=persist_warehouse,
                 write_debug=write_debug,
+                include_key_events=include_key_events,
             )
             results.append(
                 TickerEmitResult(
@@ -70,11 +75,14 @@ def batch_emit(
                 )
             )
         except Exception as exc:  # noqa: BLE001 — per-ticker isolation
+            code = "invalid_ticker" if isinstance(exc, ValueError) and label == raw else "emit_failed"
+            if isinstance(exc, ValueError) and not isinstance(label, DemoTicker):
+                code = "invalid_ticker"
             results.append(
                 TickerEmitResult(
-                    ticker=ticker,
+                    ticker=label,
                     status="error",
-                    error_code="emit_failed",
+                    error_code=code,
                     error_message=str(exc),
                 )
             )

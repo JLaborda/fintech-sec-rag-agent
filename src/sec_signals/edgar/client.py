@@ -9,7 +9,6 @@ import httpx
 from sec_signals.edgar.universe import cik_for_ticker
 from sec_signals.models.enums import DemoTicker
 
-
 ALLOWED_FORMS = {"10-K", "10-K/A"}
 
 
@@ -65,3 +64,13 @@ class EdgarClient:
         latest["ticker"] = ticker_enum.value
         latest["cik"] = cik
         return latest
+
+    def fetch_primary_document(self, filing: dict[str, Any]) -> bytes:
+        """Download the primary 10-K/10-K/A document bytes from EDGAR archives."""
+        cik = str(filing["cik"]).lstrip("0") or "0"
+        accession_nodash = str(filing["accession_number"]).replace("-", "")
+        primary = filing["primary_document"]
+        url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_nodash}/{primary}"
+        response = self._client.get(url, headers=self._headers())
+        response.raise_for_status()
+        return response.content
