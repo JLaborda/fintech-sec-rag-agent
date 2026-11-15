@@ -77,9 +77,10 @@ Shared helper (e.g. `sec_signals.retrieve.retry.call_with_backoff`) used by Tita
 | Max attempts | **5** (1 initial + 4 retries) |
 | Backoff | Exponential: `base_delay * (2 ** (attempt - 1))` with `base_delay = 0.5` seconds |
 | Jitter | Full jitter in `[0, delay]` to reduce thundering herd under concurrency |
-| Retriable | Bedrock: `ThrottlingException`, `ServiceUnavailableException`, `ModelTimeoutException`, HTTP 429/5xx when exposed; OpenSearch: 429, 503, connection errors, bulk item retryable failures that the client surfaces as exceptions |
-| Non-retriable | 4xx validation/auth (except 429), schema/programming errors — fail immediately |
-| Tests | Mocked clients that fail N times then succeed; assert call count and that sleep/backoff is invoked (monkeypatch sleep) |
+| Retriable | Bedrock: `ThrottlingException`, `ServiceUnavailableException`, `ModelTimeoutException`, HTTP 429/5xx when exposed; OpenSearch: transport/HTTP 429 or 503, connection errors; **and** bulk HTTP 200 responses with `errors: true` where failed items report status **429 or 503** (retry **those failed items only**, within the same max-attempt budget) |
+| Bulk item handling | After every `bulk` call, inspect the top-level `errors` flag and each item’s status. Count a chunk toward `indexed X/Y` only after its item succeeds. Items that remain unrecovered after max attempts (or that fail with non-retriable statuses) **MUST fail the run** — never log `indexed Y/Y` with missing chunks |
+| Non-retriable | 4xx validation/auth (except 429), schema/programming errors, bulk item failures other than 429/503 — fail immediately (or after unrecovered retries for 429/503) |
+| Tests | Mocked clients that fail N times then succeed; assert call count and that sleep/backoff is invoked (monkeypatch sleep); include a **mixed-success** bulk response (some items ok, one item status 429) that is retried until that item succeeds |
 
 ### 4. Progress log format (CA-2)
 
@@ -96,7 +97,7 @@ Shared helper (e.g. `sec_signals.retrieve.retry.call_with_backoff`) used by Tita
 | Loader | `importlib.resources.files("sec_signals.schemas").joinpath("signal-emission.schema.json").read_text(encoding="utf-8")` in `emission_validator.load_emission_schema` |
 | Packaging | `pyproject.toml`: `[tool.setuptools.package-data]` → `"sec_signals" = ["schemas/*.json"]` (and ensure `schemas` is a package with `__init__.py` or use setuptools package-data for non-package dirs — prefer `sec_signals/schemas/` as a package) |
 | Worker | No Dockerfile/Terraform change required in this feature if the image installs the package from `src/` via the existing copy of `src/`; schema rides inside the wheel/install. If image does editable-style copy of `src/` only, package-data under `src/sec_signals/schemas/` is included automatically. |
-| Test | Install or `sys.path` isolate so repo `specs/` is not readable at the old `_SCHEMA_PATH`; assert `load_emission_schema()` still returns a dict with expected `$schema` / required keys |
+| Test | (1) Assert packaged schema bytes are **identical** to `specs/001-10k-signal-demo/contracts/signal-emission.schema.json`. (2) Build a wheel, install into a **fresh venv outside the repo**, run `load_emission_schema()` from that install, and assert the wheel contains `sec_signals/schemas/signal-emission.schema.json` so the check cannot pass by importing the source-tree copy. Also assert hermetic contract markers on the loaded dict. |
 
 Grounding: `emission_validator._SCHEMA_PATH` resolves to `parents[3]/specs/001-10k-signal-demo/contracts/...` which becomes `/usr/local/lib/python3.12/specs/...` in the image (#8).
 

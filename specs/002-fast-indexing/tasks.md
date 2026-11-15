@@ -67,7 +67,10 @@ description: "Task list for fast, observable 10-K indexing (issue #9)"
 **Goal**: Embed and OpenSearch calls retry with exponential backoff and max attempts; mocked unit coverage.
 
 - [ ] T005 [P] **CA-3 — Failing test first (Bedrock)**: Add `tests/unit/test_embed_opensearch_retry.py` case `test_titan_embed_retries_throttling` where fake Bedrock raises throttling twice then succeeds; assert 3 invokes and backoff sleep called; max attempts 5. Run: `pytest tests/unit/test_embed_opensearch_retry.py -k titan_embed_retries_throttling -v` — expect FAIL. Then wrap `TitanEmbedClient.embed` (via `call_with_backoff` in `src/sec_signals/retrieve/titan_embed.py`) until PASS.
-- [ ] T006 [P] **CA-3 — Failing test first (OpenSearch)**: In the same file, case `test_opensearch_bulk_retries_throttling` where fake bulk fails with retriable error twice then succeeds; assert retries + max attempts. Run: `pytest tests/unit/test_embed_opensearch_retry.py -k opensearch_bulk_retries_throttling -v` — expect FAIL. Then wrap bulk/index path in `src/sec_signals/retrieve/indexer.py` until PASS.
+- [ ] T006 [P] **CA-3 — Failing test first (OpenSearch)**: In the same file, cases:
+  - `test_opensearch_bulk_retries_throttling` — fake bulk transport/HTTP fails with retriable error twice then succeeds; assert retries + max attempts.
+  - `test_opensearch_bulk_retries_mixed_item_429` — fake bulk returns HTTP 200 with `errors: true`, most items status 200/201 and **one** item status **429**; assert only the failed item is retried, progress does not count it until success, and unrecovered item failure fails the run.
+  - Run: `pytest tests/unit/test_embed_opensearch_retry.py -k "opensearch_bulk_retries_throttling or opensearch_bulk_retries_mixed_item_429" -v` — expect FAIL. Then wrap bulk/index path in `src/sec_signals/retrieve/indexer.py` (inspect `errors` + per-item status after each bulk) until PASS.
 - [ ] T007 **CA-3 — Failing test first (exhaustion)**: Case `test_retry_exhausts_after_max_attempts` asserting failure after **5** attempts without infinite loop. Run: `pytest tests/unit/test_embed_opensearch_retry.py -k retry_exhausts_after_max_attempts -v` — expect FAIL then PASS after helper/client behavior matches plan.
 
 **Checkpoint**: CA-3 unit proof green (mocked clients only).
@@ -80,6 +83,8 @@ description: "Task list for fast, observable 10-K indexing (issue #9)"
 
 - [ ] T008 **CA-4 — Failing test first**: Add `tests/unit/test_emission_schema_packaged.py` that:
   - Invokes `load_emission_schema()` while ensuring the historical path `specs/001-10k-signal-demo/contracts/signal-emission.schema.json` is **not** used (e.g. monkeypatch/chdir/hide path, or assert loader does not open that path).
+  - Asserts the packaged `src/sec_signals/schemas/signal-emission.schema.json` is **byte-identical** to `specs/001-10k-signal-demo/contracts/signal-emission.schema.json`.
+  - Builds the wheel, installs it into a **fresh virtual environment outside the repository**, runs `load_emission_schema()` from that environment, and asserts the wheel contains `sec_signals/schemas/signal-emission.schema.json` (so the check cannot pass by importing the source-tree copy).
   - Asserts returned schema is a dict with hermetic contract markers (e.g. required properties / `factor_schema_version`).
   - Run: `pytest tests/unit/test_emission_schema_packaged.py -k load_emission_schema_from_package -v` — expect FAIL (current `Path(__file__).parents[3]/specs/...` loader).
   - Then: add `src/sec_signals/schemas/__init__.py` + copy schema to `src/sec_signals/schemas/signal-emission.schema.json`; set `[tool.setuptools.package-data]` in `pyproject.toml`; rewrite `src/sec_signals/validate/emission_validator.py` to `importlib.resources` until PASS.
