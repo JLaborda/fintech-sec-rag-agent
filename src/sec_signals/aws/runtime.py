@@ -70,7 +70,12 @@ def build_runtime(
         model_id=cfg.llm_model_id,
         client=bedrock_client,
     )
-    indexer = ChunkIndexer(embedder=embedder, client=aoss_client)
+    indexer = ChunkIndexer(
+        embedder=embedder,
+        client=aoss_client,
+        embed_concurrency=cfg.embed_concurrency,
+        opensearch_bulk_size=cfg.opensearch_bulk_size,
+    )
     search = OpenSearchClient(aoss_client, index_name=aoss_client.index_name)
     retriever = FactorRetriever(embedder=embedder, search=search)
     extractor = FactorExtractor(client=converse)
