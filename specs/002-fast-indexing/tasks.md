@@ -41,7 +41,7 @@ description: "Task list for fast, observable 10-K indexing (issue #9)"
 
 **Independent Test**: Mocked embedder + search client; assert overlapping embed calls and bulk batch sizes.
 
-- [ ] T003 **CA-1 — Failing test first**: Add `tests/unit/test_indexer_concurrency.py` that:
+- [X] T003 **CA-1 — Failing test first**: Add `tests/unit/test_indexer_concurrency.py` that:
   - Builds `ChunkIndexer` with `embed_concurrency=4` and a fake embedder that records in-flight concurrency.
   - Asserts peak in-flight embeds &gt; 1 for ≥8 chunks without precomputed embeddings.
   - Asserts fake OpenSearch client receives **bulk** calls (not only per-doc `index`) with batch size ≤ configured `opensearch_bulk_size` (default 50; use small size e.g. 3 in test to force multiple bulks).
