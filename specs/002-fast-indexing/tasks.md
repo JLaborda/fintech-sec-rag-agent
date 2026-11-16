@@ -28,7 +28,7 @@ description: "Task list for fast, observable 10-K indexing (issue #9)"
 
 **Purpose**: Shared retry helper and config knobs used by CA-1..CA-3 (still TDD).
 
-- [ ] T001 [P] **Failing test first (foundation)**: Add `tests/unit/test_retry_backoff.py` asserting `call_with_backoff` retries on a retriable error, respects max attempts **5**, and applies exponential backoff (monkeypatch sleep). Run: `pytest tests/unit/test_retry_backoff.py -k call_with_backoff -v` — expect FAIL. Then implement `src/sec_signals/retrieve/retry.py` until PASS.
+- [X] T001 [P] **Failing test first (foundation)**: Add `tests/unit/test_retry_backoff.py` asserting `call_with_backoff` retries on a retriable error, respects max attempts **5**, and applies exponential backoff (monkeypatch sleep). Run: `pytest tests/unit/test_retry_backoff.py -k call_with_backoff -v` — expect FAIL. Then implement `src/sec_signals/retrieve/retry.py` until PASS.
 - [ ] T002 [P] **Failing test first (foundation)**: Add `tests/unit/test_indexing_settings.py` asserting `Settings` exposes `embed_concurrency` default **8** (env `SEC_SIGNALS_EMBED_CONCURRENCY`) and `opensearch_bulk_size` default **50** (env `SEC_SIGNALS_OPENSEARCH_BULK_SIZE`). Run: `pytest tests/unit/test_indexing_settings.py -k embed_concurrency -v` — expect FAIL. Then extend `src/sec_signals/config.py` until PASS.
 
 **Checkpoint**: Retry helper + settings knobs green.
