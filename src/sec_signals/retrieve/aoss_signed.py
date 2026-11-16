@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 from urllib.parse import urlparse
 
 import boto3
@@ -79,20 +80,20 @@ class AossSignedClient:
             return _freeze_credentials(self._credential_provider())
         return _freeze_credentials(self._credentials)
 
-    def _signed_request(
+    def _signed_raw_request(
         self,
         method: str,
         path: str,
         *,
-        body: dict[str, Any] | None = None,
+        raw: bytes | None = None,
+        content_type: str = "application/json",
         allow_404: bool = False,
     ) -> dict[str, Any]:
         url = f"{self.endpoint}{path}"
-        raw = json.dumps(body).encode("utf-8") if body is not None else None
         payload_hash = hashlib.sha256(raw if raw is not None else b"").hexdigest()
         headers = {
             "Host": self._host,
-            "Content-Type": "application/json",
+            "Content-Type": content_type,
             "X-Amz-Content-SHA256": payload_hash,
         }
         aws_request = AWSRequest(method=method, url=url, data=raw, headers=headers)
@@ -123,6 +124,17 @@ class AossSignedClient:
         if not text:
             return {"status_code": status}
         return json.loads(text)
+
+    def _signed_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: dict[str, Any] | None = None,
+        allow_404: bool = False,
+    ) -> dict[str, Any]:
+        raw = json.dumps(body).encode("utf-8") if body is not None else None
+        return self._signed_raw_request(method, path, raw=raw, allow_404=allow_404)
 
     def ensure_index(self, *, dimension: int = DEFAULT_EMBED_DIM) -> None:
         """Create sec-10k-chunks with knn_vector mapping when missing."""
@@ -162,6 +174,23 @@ class AossSignedClient:
         """Index a document. ``id`` is ignored: VECTORSEARCH forbids custom IDs."""
         _ = id
         return self._signed_request("POST", f"/{index}/_doc", body=body)
+
+    def bulk(self, *, body: list[dict[str, Any]]) -> Any:
+        """Bulk index via NDJSON. Custom ``_id`` fields are stripped (VECTORSEARCH)."""
+        lines: list[str] = []
+        for item in body:
+            if "index" in item and isinstance(item["index"], dict):
+                meta = {k: v for k, v in item["index"].items() if k != "_id"}
+                lines.append(json.dumps({"index": meta}, separators=(",", ":")))
+            else:
+                lines.append(json.dumps(item, separators=(",", ":")))
+        raw = ("\n".join(lines) + "\n").encode("utf-8")
+        return self._signed_raw_request(
+            "POST",
+            "/_bulk",
+            raw=raw,
+            content_type="application/x-ndjson",
+        )
 
     def search(self, *, index: str, body: dict[str, Any]) -> Any:
         return self._signed_request("POST", f"/{index}/_search", body=body)
