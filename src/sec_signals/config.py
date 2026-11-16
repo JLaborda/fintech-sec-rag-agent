@@ -5,11 +5,12 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-
 DEFAULT_REGION = "eu-west-1"
 DEFAULT_LLM_MODEL_ID = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
 DEFAULT_EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
 DEFAULT_EMBED_DIM = 1024
+DEFAULT_EMBED_CONCURRENCY = 8
+DEFAULT_OPENSEARCH_BULK_SIZE = 50
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,8 @@ class Settings:
     llm_model_id: str = DEFAULT_LLM_MODEL_ID
     embed_model_id: str = DEFAULT_EMBED_MODEL_ID
     embed_dimensions: int = DEFAULT_EMBED_DIM
+    embed_concurrency: int = DEFAULT_EMBED_CONCURRENCY
+    opensearch_bulk_size: int = DEFAULT_OPENSEARCH_BULK_SIZE
     edgar_user_agent: str = ""
 
     @classmethod
@@ -43,6 +46,12 @@ class Settings:
             llm_model_id=os.getenv("SEC_SIGNALS_LLM_MODEL_ID", DEFAULT_LLM_MODEL_ID),
             embed_model_id=os.getenv("SEC_SIGNALS_EMBED_MODEL_ID", DEFAULT_EMBED_MODEL_ID),
             embed_dimensions=int(os.getenv("SEC_SIGNALS_EMBED_DIM", str(DEFAULT_EMBED_DIM))),
+            embed_concurrency=int(
+                os.getenv("SEC_SIGNALS_EMBED_CONCURRENCY", str(DEFAULT_EMBED_CONCURRENCY))
+            ),
+            opensearch_bulk_size=int(
+                os.getenv("SEC_SIGNALS_OPENSEARCH_BULK_SIZE", str(DEFAULT_OPENSEARCH_BULK_SIZE))
+            ),
             edgar_user_agent=os.getenv("SEC_EDGAR_USER_AGENT", ""),
         )
 
